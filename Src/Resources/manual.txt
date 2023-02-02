@@ -1,1 +1,159 @@
+<Introduction>
+
+This is an assembler/disassembler for the Z80 microprocessor.
+It can also simulate a Multitech Microprofessor MPF-1 single board computer (keyboard/display).
+
+<Operations>
+
+After loading a source file into the main window you can debug (assemble) it with the debugger button.
+If the code doesn't start with an ORG directive the startaddress is set to 0000H.
+The first error it encounters will be highlighted in light red.
+Ajustments can be made in the main window (don't forget to save).
+
+If no errors were encountered, the simulator is ready to (fast-) run or step through the program and the first instruction to be executed will be highlighted in light green.
+Running will be with a delay of 50 ms between instructions (this can be adjusted in the main screen).
+Fast running will execute the instruction at the maximum speed but no updates of the flags/registers/memory/ports will be seen on the screen until the program is stopped or a breakpoint is encountered.
+
+The checkbox 'Skip Program Delay Loops' will skip the loop delay instruction: 'djnz $'.
+This is a delay routine used for example in a delay after writing a digit to the display.
+While stepping or running trough a program it can be quite a nuisance ;-)
+If Fast Running has been selected it can be ok to uncheck this so the display will be better visible.
+
+Setting the program counter to a specific address can be done by entering this address in the the 'set program counter' textbox and close with an enter. 
+
+At any time the memory and ports can be viewed in the right windows.
+The memory window will follow the next instruction to be executed, this can be prevented with the 'Lock' checkbox.
+The memory window can be easily set to the program counter or stack pointer with the designated buttons.
+
+On the left all registers of the Z80 are shown.
+
+Above the memory panel the status of the Interrupt Enable/Disable is shown as a green (Enabled) or red (Disabled) label.
+The interrupt mode is shown to the right (Im0, Im1 or Im2)
+ 
+With the checkbox 'MPF-1' a keyboard/display of a MPF-1 can be shown/hidden.
+This will simulate the MPF-1, the display will show what has been written to the display port B (0x01), Port C (0x02) selects the digit.
+The keyboard row can be read at port A (0x00) also with the column selected with port C (0x02).
+If a key is pressed it turns red and stays that way (active) until it is pressed again to give the program time to scan it.
+Only the 'Reset', the 'Moni', the 'Intr' and the 'User' key will act directly as an interrupt in the running program.
+
+If a sound is created (by writing square wave forms to port C, bit7) an image of a speaker will be visible.
+Since it's not realy posible to detect the frequency of the sound created (other then by a monitor routine, see later in this document) only a visible indication is shown.
+
+The monitor program of the MPF-1 has been provided in the folder 'Monitor'.
+A version with comments has been added for documentary purposes.
+
+In the MPF-1 window there are several checkboxes:
+-Display Latch: When checked this will display (remember) the last written value (other then 0x00) at a display digit.
+-Enable Sound: When checked if a sound is made by the monitor routine (TONE, TONE1K, TONE2K) this will be audible.
+-Insert Monitor Program on Debug: When the debug button is pressed it will insert the monitor program (after assembly of the user program) at 0x0000 to 0x0800
+
+<Assembler>
+
+The assembler can use all of the instructions of the Z80 processor including the undocumented instructions.
+All instructions are implemented by buttons on the left of the screen for reference and/or inserting the selected instruction into the program.
+Numbers should be denoted in decimal or hexadecimal (0x00 or 00H style)
+
+The following directives can be used (example on next row(s)):
+
+`ASEG` Use the location counter for the absolute program segment
+`CSEG` Use the location counter for the code program segment
+`DSEG` Use the location counter for the data program segment
+Followed by and 'ORG' directive the assembler will set the segemnt to this address
+
+`ORG address` Set locationcounter to this address (while assembling)
+ORG 0000H
+
+`LABEL EQU constant` Assignement of a constant
+DSPLY EQU 1800H 
+
+`$` Current location counter (while assembling)
+NUMC EQU $ - CMDTB ; NUMBER OF COMMANDS 
+
+`[LABEL] DB value` Reserving a (number of) byte(s) (with or without label), strings in double quotes will be terminated by a zero
+STRING DB "MPF-1"
+CHARARRAY DB 'MPF-1'
+AT DB '@', 00H
+DB 00H, 01H, 02H
+DB 'A', 'B', 'C'
+
+`[LABEL] DW value` Reserving a word (with or without label)
+DW 0000H
+CMDAD: 
+        DW      SSTEP   ; ADDRESS OF SINGLE STEP ROUTINE 
+        DW      EXAM    ; ADDRESS OF EXAMINE REGISTERS ROUTINE 
+        DW      SUBST   ; ADDRESS OF SUBSTITUTE MEMORY ROUTINE 
+        DW      GOCMD   ; ADDRESS OF GO ROUTINE 
+
+`[LABEL] DS number` Reserving 'number' of bytes  
+
+`LOW([LABEL])` will give the low byte of 2 bytes (usually an address) 
+`HIGH([LABEL])` will give the high byte of 2 bytes (usually an address) 
+
+`Arithmetic` e.g. +1, -2, *4, /2 
+USRBR EQU RAMST + 256 - (RMUSE + SKLN + UBRLN)
+
+`Logical` AND, OR 
+FLAG & 01H
+FLAG | 80H
+
+<DisAssembler>
+
+The disassembler will follow all possible paths from an entry address.
+Additional paths can be provided.
+
+<Menu>
+
+`File->New` 
+
+Delete source file and reset simulator
+
+`File->Open` 
+
+Load a new source file
+
+`File->Save` 
+
+Save the current source file
+
+`File->Save As`
+
+Save the current source file under a given name
+ 
+`File->Save Binary`
+
+Save the binary from assembling the current source
+
+`File->Quit`
+
+Quit program
+
+`Reset->Reset RAM`
+
+Clear RAM
+
+`Reset->Reset Ports`
+
+Clear Ports
+
+`Reset->Reset Simulator`
+
+Clear RAM, Ports, Registers, Flags
+
+`DisAssembler->Open Binary`
+
+Open a binary file for disassembly
+
+`Help->Manual` 
+
+Show this manual
+
+`Help->About`
+
+Show program info
+
+-----------------------------------------------------
+Please report any bugs you encounter,
+Dirk
+info@fornext.nl 
+
 
