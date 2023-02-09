@@ -1155,7 +1155,9 @@ namespace Z80
                                     (opr == "i") ||
                                     (opr == "r") ||
                                     opr.StartsWith("(ix+") ||
-                                    opr.StartsWith("(iy+")
+                                    opr.StartsWith("(ix-") ||
+                                    opr.StartsWith("(iy+") ||
+                                    opr.StartsWith("(iy-") 
                                    )
                                 {
                                     matchOperands = false;
@@ -1284,13 +1286,7 @@ namespace Z80
                         {
                             if (argumentsZ80IXBitInstruction[indexOperands] == "(ix+o)")
                             {
-                                if (!operands[indexOperands].ToLower().Trim().StartsWith("(ix+"))
-                                {
-                                    matchOperands = false;
-                                }
-                            } else if (argumentsZ80IXBitInstruction[indexOperands] == "(iy+o)")
-                            {
-                                if (!operands[indexOperands].ToLower().Trim().StartsWith("(iy+"))
+                                if (!operands[indexOperands].ToLower().Trim().StartsWith("(ix+") && !operands[indexOperands].ToLower().Trim().StartsWith("(ix-"))
                                 {
                                     matchOperands = false;
                                 }
@@ -1351,15 +1347,9 @@ namespace Z80
                         // Check operands
                         for (int indexOperands = 0; indexOperands < operands.Length; indexOperands++)
                         {
-                            if (argumentsZ80IYBitInstruction[indexOperands] == "(ix+o)")
+                            if (argumentsZ80IYBitInstruction[indexOperands] == "(iy+o)")
                             {
-                                if (!operands[indexOperands].ToLower().Trim().StartsWith("(ix+"))
-                                {
-                                    matchOperands = false;
-                                }
-                            } else if (argumentsZ80IYBitInstruction[indexOperands] == "(iy+o)")
-                            {
-                                if (!operands[indexOperands].ToLower().Trim().StartsWith("(iy+"))
+                                if (!operands[indexOperands].ToLower().Trim().StartsWith("(iy+") && !operands[indexOperands].ToLower().Trim().StartsWith("(iy-"))
                                 {
                                     matchOperands = false;
                                 }
@@ -1456,16 +1446,8 @@ namespace Z80
                     return ("EXCEPTION ERROR AT LINE " + (lineNumber + 1));
                 }
 
-                // Check for $ directive
-                int equ_pos = line.Trim().IndexOf("$");
-                if (equ_pos == 0)
-                {
-                    // Next line
-                    continue;
-                }
-
                 // Check for equ directive 
-                equ_pos = line.ToLower().IndexOf("equ");
+                int equ_pos = line.ToLower().IndexOf("equ");
                 if (equ_pos >= 0)
                 {
                     string label = line.Split(new char[] { ' ' })[0].TrimEnd(':');
@@ -2196,18 +2178,22 @@ namespace Z80
                                 found = FindInstruction(instructions.Z80MiscInstructions, opcode, operands, out matchOpcodeMisc);
                             }
 
+                            // Check opcode/operands for Z80 instructions (IXbit)
                             bool matchOpcodeIXbit = false;
+                            bool foundIXbit = false;
                             if (found.Count == 0)
                             {
-                                // Check opcode/operands for Z80 instructions (IXbit)
                                 found = FindIXbitInstruction(opcode, operands, out matchOpcodeIXbit);
+                                if (found.Count == 1) foundIXbit = true;
                             }
 
+                            // Check opcode/operands for Z80 instructions (IYbit)
                             bool matchOpcodeIYbit = false;
+                            bool foundIYbit = false;
                             if (found.Count == 0)
                             {
-                                // Check opcode/operands for Z80 instructions (IYbit)
                                 found = FindIYbitInstruction(opcode, operands, out matchOpcodeIYbit);
+                                if (found.Count == 1) foundIYbit = true;
                             }
 
                             string args = "";
@@ -2258,20 +2244,17 @@ namespace Z80
 
                             RAMprogramLine[locationCounter] = lineNumber;
 
-                            if (matchOpcodeIXbit || matchOpcodeIYbit)
+                            if (foundIXbit)
                             {
-                                // IXBit and IYBit: 2 opcodes, then operand, then third opcode  
-                                if (matchOpcodeIXbit)
-                                {
-                                    RAM[locationCounter++] = 0xDD;
-                                    RAM[locationCounter++] = 0xCB;
-                                }
-
-                                if (matchOpcodeIYbit)
-                                {
-                                    RAM[locationCounter++] = 0xFD;
-                                    RAM[locationCounter++] = 0xCB;
-                                }
+                                // IXBit: 2 opcodes, then operand, then third opcode  
+                                RAM[locationCounter++] = 0xDD;
+                                RAM[locationCounter++] = 0xCB;
+                            } else
+                            if (foundIYbit)
+                            {
+                                // IYBit: 2 opcodes, then operand, then third opcode  
+                                RAM[locationCounter++] = 0xFD;
+                                RAM[locationCounter++] = 0xCB;
                             } else
                             {
                                 // Regular instruction: 1 or 2 opcodes, then operand 
@@ -2413,7 +2396,7 @@ namespace Z80
                             }
 
                             // IXBit and IYBit: third opcode byte 
-                            if (matchOpcodeIXbit || matchOpcodeIYbit)
+                            if (foundIXbit || foundIYbit)
                             {
                                 RAM[locationCounter++] = Convert.ToByte(instruction.Opcode);
                             }

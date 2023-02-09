@@ -73,10 +73,10 @@ namespace Z80
             while (str.Contains("0x"))
             {
                 int start = str.IndexOf("0x");
-                int end = 0;
-                for (int i=start+2; i<str.Length; i++)
+                int end = str.Length;
+                if (end > start + 1) start+=2;
+                for (int i = start; i < str.Length; i++)
                 {
-                    if (i == str.Length - 1) start = i;
                     if (str[i] == ' ') { end = i; break; }
                     if (str[i] == '+') { end = i; break; }
                     if (str[i] == '-') { end = i; break; }
@@ -84,7 +84,7 @@ namespace Z80
                     if (str[i] == '/') { end = i; break; }
                     if (str[i] == '&') { end = i; break; }
                     if (str[i] == '|') { end = i; break; }
-                    if (str[i] == '(') { start = i + 1; break; }
+                    if (str[i] == ')') { end = i; break; }
                 }
 
                 if (end > start)
@@ -100,13 +100,44 @@ namespace Z80
                 }
             }
 
+            // Convert hex values to decimal
+            while (str.Contains("$"))
+            {
+                int start = str.IndexOf("$");
+                int end = str.Length;
+                if (end > start) start++;
+                for (int i = start; i < str.Length; i++)
+                {
+                    if (str[i] == ' ') { end = i; break; }
+                    if (str[i] == '+') { end = i; break; }
+                    if (str[i] == '-') { end = i; break; }
+                    if (str[i] == '*') { end = i; break; }
+                    if (str[i] == '/') { end = i; break; }
+                    if (str[i] == '&') { end = i; break; }
+                    if (str[i] == '|') { end = i; break; }
+                    if (str[i] == ')') { end = i; break; }
+                }
+
+                if (end > start)
+                {
+                    string hex = str.Substring(start, end - start);
+                    string dec = Convert.ToInt32(hex, 16).ToString();
+
+                    str = str.Replace("$" + hex, dec);
+                } else
+                {
+                    Exception ex = new Exception("\r\nError in hexadecimal value in: " + str);
+                    throw (ex);
+                }
+            }
+
             while (str.Contains("h"))
             {
                 int end = str.IndexOf("h");
-                int start = str.Length -1;
-                for (int i = end - 1; i >= 0; i--)
+                int start = 0;
+                if (end > start) end--;
+                for (int i = end; i >= 0; i--)
                 {
-                    if (i == 0) start = i;
                     if (str[i] == ' ') { start = i + 1; break; }
                     if (str[i] == '+') { start = i + 1; break; }
                     if (str[i] == '-') { start = i + 1; break; }
@@ -119,7 +150,7 @@ namespace Z80
 
                 if (end > start)
                 {
-                    string hex = str.Substring(start, end - start);
+                    string hex = str.Substring(start, end + 1 - start);
                     string dec = Convert.ToInt32(hex, 16).ToString();
 
                     str = str.Replace(hex + "h", dec);
@@ -133,10 +164,10 @@ namespace Z80
             while (str.Contains("b"))
             {
                 int end = str.IndexOf("b");
-                int start = str.Length - 1;
-                for (int i = end - 1; i >= 0; i--)
+                int start = 0;
+                if (end > start) end--;
+                for (int i = end; i >= 0; i--)
                 {
-                    if (i == 0) start = i;
                     if (str[i] == ' ') { start = i + 1; break; }
                     if (str[i] == '+') { start = i + 1; break; }
                     if (str[i] == '-') { start = i + 1; break; }
@@ -149,7 +180,7 @@ namespace Z80
 
                 if (end > start)
                 {
-                    string bin = str.Substring(start, end - start);
+                    string bin = str.Substring(start, end + 1 - start);
                     string dec = Convert.ToInt32(bin, 2).ToString();
 
                     str = str.Replace(bin + "b", dec);
