@@ -51,7 +51,7 @@ In the MPF-1 window there are several checkboxes:
 
 The assembler can use all of the instructions of the Z80 processor including the undocumented instructions.
 All instructions are implemented by buttons on the left of the screen for reference and/or inserting the selected instruction into the program.
-Numbers should be denoted in decimal or hexadecimal (0x00 or 00H style)
+Numbers should be denoted in decimal, hexadecimal (0x00, $00 or 00H style) or binary (10101010B style).
 
 The following directives can be used (example on next row(s)):
 
