@@ -1054,13 +1054,13 @@ namespace Z80
                             string opr = operands[indexOperands].ToLower().Trim();
 
                             // Check if operand is indexed and the instruction is not indexed
-                            if (operands[indexOperands].StartsWith("(") && !arg.StartsWith("("))
+                            if (opr.StartsWith("(") && !arg.StartsWith("("))
                             {
                                 matchOperands = false;
                             }
 
                             // Check if instruction is indexed and the operand is not indexed
-                            if (!operands[indexOperands].StartsWith("(") && arg.StartsWith("("))
+                            if (!opr.StartsWith("(") && arg.StartsWith("("))
                             {
                                 matchOperands = false;
                             }
@@ -1079,7 +1079,7 @@ namespace Z80
                                 (arg == "9")
                                )
                             {
-                                if (GetByte(arg, out string result1) != GetByte(operands[indexOperands], out string result2))
+                                if (GetByte(arg, out string result1) != GetByte(opr, out string result2))
                                 {
                                     matchOperands = false;
                                 }
@@ -1099,7 +1099,7 @@ namespace Z80
                                 (arg == "38h")
                                )
                             {
-                                if (GetByte(arg, out string result1) != GetByte(operands[indexOperands], out string result2))
+                                if (GetByte(arg, out string result1) != GetByte(opr, out string result2))
                                 {
                                     matchOperands = false;
                                 }
@@ -1157,7 +1157,11 @@ namespace Z80
                                     opr.StartsWith("(ix+") ||
                                     opr.StartsWith("(ix-") ||
                                     opr.StartsWith("(iy+") ||
-                                    opr.StartsWith("(iy-") 
+                                    opr.StartsWith("(iy-") ||
+                                    opr.StartsWith("(ix +") ||
+                                    opr.StartsWith("(ix -") ||
+                                    opr.StartsWith("(iy +") ||
+                                    opr.StartsWith("(iy -")
                                    )
                                 {
                                     matchOperands = false;
@@ -1208,13 +1212,13 @@ namespace Z80
                             {
                                 if (arg == "(ix+o)")
                                 {
-                                    if (!opr.StartsWith("(ix+") && !opr.StartsWith("(ix-"))
+                                    if (!opr.StartsWith("(ix+") && !opr.StartsWith("(ix +") && !opr.StartsWith("(ix-") && !opr.StartsWith("(ix -"))
                                     {
                                         matchOperands = false;
                                     }
                                 } else if (arg == "(iy+o)")
                                 {
-                                    if (!opr.StartsWith("(iy+") && !opr.StartsWith("(iy-"))
+                                    if (!opr.StartsWith("(iy+") && !opr.StartsWith("(iy +") && !opr.StartsWith("(iy-") && !opr.StartsWith("(iy -"))
                                     {
                                         matchOperands = false;
                                     }
@@ -1448,9 +1452,9 @@ namespace Z80
 
                 // Check for equ directive 
                 int equ_pos = line.ToLower().IndexOf("equ");
-                if (equ_pos >= 0)
+                if (equ_pos > 0)
                 {
-                    string label = line.Split(new char[] { ' ' })[0].TrimEnd(':');
+                    string label = line.Substring(0, equ_pos-1).Trim().TrimEnd(':');
 
                     if (addressSymbolTable.ContainsKey(label))
                     {
@@ -1464,7 +1468,7 @@ namespace Z80
                         int calc = Get2Bytes(val, out string result);
                         if (result != "OK")
                         {
-                            return ("Invalid operand for " + opcode + "(" + result + ") at line " + (lineNumber + 1));
+                            return ("Invalid operand for EQU (" + result + ") at line " + (lineNumber + 1));
                         }
 
                         // ADD the label/value
