@@ -1371,7 +1371,7 @@ namespace Z80
                 formProgram.Name = "FormProgram";
                 formProgram.Text = "Program";
                 formProgram.Icon = Properties.Resources.Z80;
-                formProgram.Size = new Size(500, 600);
+                formProgram.Size = new Size(516, 600);
                 formProgram.MinimumSize = new Size(500, 600);
                 formProgram.MaximizeBox = false;
                 formProgram.MinimizeBox = false;
@@ -1404,7 +1404,7 @@ namespace Z80
                 textBox.ScrollBars = ScrollBars.Vertical;
                 textBox.ReadOnly = true;
                 textBox.BackColor = Color.LightYellow;
-                textBox.Size = new Size(464, 510);
+                textBox.Size = new Size(486, 510);
                 textBox.Text = program;
                 textBox.Font = font;
                 textBox.BorderStyle = BorderStyle.None;
@@ -1635,7 +1635,7 @@ namespace Z80
                             if (lbl.BackColor != Color.LightGreen) lbl.BackColor = SystemColors.Info;
                         }
 
-                        if ((row >= 0) && (col >= 0) && (row <= 16) && (col <= 16))
+                        if ((row >= 0) && (col >= 0) && (row < 16) && (col < 16))
                         {
                             if (memoryTableLabels[row, col].BackColor != Color.LightGreen) memoryTableLabels[row, col].BackColor = SystemColors.GradientInactiveCaption;
                         }
