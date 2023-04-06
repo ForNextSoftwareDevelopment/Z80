@@ -5169,7 +5169,7 @@ namespace Z80
                     SetRegisterValue((byte)((num >> 3) & 0x07), PORT[registerC]);
                     SetFlags(PORT[registerC]);
                     registerPC++;
-                } else if ((byteInstruction == 0x41) ||                                                                    // out r,(c)
+                } else if ((byteInstruction == 0x41) ||                                                                    // out (c),r
                            (byteInstruction == 0x49) ||
                            (byteInstruction == 0x51) ||
                            (byteInstruction == 0x59) ||
