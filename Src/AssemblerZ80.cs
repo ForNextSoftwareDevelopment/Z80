@@ -2721,7 +2721,7 @@ namespace Z80
                     }
                 } else if (byteInstruction == 0xE4)                                                                         // call po,nn
                 {
-                    if (flagC)
+                    if (flagPV)
                     {
                         registerPC++;
                         registerPC++;
@@ -2751,7 +2751,12 @@ namespace Z80
                         registerPC++;
                         address += (UInt16)(0x0100 * RAM[registerPC]);
                         registerPC++;
-                        registerA = RAM[address];
+                        Get2ByteFromInt(registerPC, out lo, out hi);
+                        registerSP--;
+                        RAM[registerSP] = Convert.ToByte(hi, 16);
+                        registerSP--;
+                        RAM[registerSP] = Convert.ToByte(lo, 16);
+                        registerPC = address;
                     } else
                     {
                         registerPC++;
@@ -3748,6 +3753,7 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0xC7)                                                                         // rst 00h
                 {
+                    registerPC++;
                     Get2ByteFromInt(registerPC, out lo, out hi);
                     registerSP--;
                     RAM[registerSP] = Convert.ToByte(hi, 16);
@@ -3756,6 +3762,7 @@ namespace Z80
                     registerPC = 0x0000;
                 } else if (byteInstruction == 0xCF)                                                                         // rst 08h
                 {
+                    registerPC++;
                     Get2ByteFromInt(registerPC, out lo, out hi);
                     registerSP--;
                     RAM[registerSP] = Convert.ToByte(hi, 16);
@@ -3764,6 +3771,7 @@ namespace Z80
                     registerPC = 0x0008;
                 } else if (byteInstruction == 0xD7)                                                                         // rst 10h
                 {
+                    registerPC++;
                     Get2ByteFromInt(registerPC, out lo, out hi);
                     registerSP--;
                     RAM[registerSP] = Convert.ToByte(hi, 16);
@@ -3772,6 +3780,7 @@ namespace Z80
                     registerPC = 0x0010;
                 } else if (byteInstruction == 0xDF)                                                                         // rst 18h
                 {
+                    registerPC++;
                     Get2ByteFromInt(registerPC, out lo, out hi);
                     registerSP--;
                     RAM[registerSP] = Convert.ToByte(hi, 16);
@@ -3780,6 +3789,7 @@ namespace Z80
                     registerPC = 0x0018;
                 } else if (byteInstruction == 0xE7)                                                                         // rst 20h
                 {
+                    registerPC++;
                     Get2ByteFromInt(registerPC, out lo, out hi);
                     registerSP--;
                     RAM[registerSP] = Convert.ToByte(hi, 16);
@@ -3788,6 +3798,7 @@ namespace Z80
                     registerPC = 0x0020;
                 } else if (byteInstruction == 0xEF)                                                                         // rst 28h
                 {
+                    registerPC++;
                     Get2ByteFromInt(registerPC, out lo, out hi);
                     registerSP--;
                     RAM[registerSP] = Convert.ToByte(hi, 16);
@@ -3796,6 +3807,7 @@ namespace Z80
                     registerPC = 0x0028;
                 } else if (byteInstruction == 0xF7)                                                                         // rst 30h
                 {
+                    registerPC++;
                     Get2ByteFromInt(registerPC, out lo, out hi);
                     registerSP--;
                     RAM[registerSP] = Convert.ToByte(hi, 16);
@@ -3804,6 +3816,7 @@ namespace Z80
                     registerPC = 0x0030;
                 } else if (byteInstruction == 0xFF)                                                                         // rst 38h
                 {
+                    registerPC++;
                     Get2ByteFromInt(registerPC, out lo, out hi);
                     registerSP--;
                     RAM[registerSP] = Convert.ToByte(hi, 16);
