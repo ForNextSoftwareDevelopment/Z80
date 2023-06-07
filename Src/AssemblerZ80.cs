@@ -1053,8 +1053,8 @@ namespace Z80
                             string arg = argumentsZ80Instruction[indexOperands];
                             string opr = operands[indexOperands].ToLower().Trim();
 
-                            // Check if operand is indexed and the instruction is not indexed
-                            if (opr.StartsWith("(") && !arg.StartsWith("("))
+                            // Check if operand is indexed and the instruction is not indexed (not with cp)
+                            if ((opcode != "cp") && opr.StartsWith("(") && !arg.StartsWith("("))
                             {
                                 matchOperands = false;
                             }
