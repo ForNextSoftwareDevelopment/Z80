@@ -795,9 +795,6 @@ namespace Z80
 
         private UInt16 Get2Bytes(string arg, out string result)
         {
-            // Replace $ with location counter -1 (location of the opcode)
-            arg = arg.Replace("$", (locationCounter - 1).ToString());
-
             /// Split arguments
             string[] args = arg.Split(new char[] { ' ', '(', ')', '+', '-', '*', '/' });
 
@@ -809,6 +806,9 @@ namespace Z80
             {
                 foreach (KeyValuePair<string, int> keyValuePair in addressSymbolTable)
                 {
+                    // Replace $ with location counter -1 (location of the opcode)
+                    if (str.Trim() == "$") arg = arg.Replace("$", (locationCounter - 1).ToString());
+
                     if (str.ToLower().Trim() == keyValuePair.Key.ToLower().Trim())
                     {
                         arg = arg.Replace(keyValuePair.Key, keyValuePair.Value.ToString());
