@@ -169,12 +169,12 @@ KEYEXEC:
     jr c,KHEX
     ld hl,TEST
     set 0,(hl)
-    sub 10h
+    sub a,10h
     cp 08h
     ld hl,KSUBFUN
     jp c,BRANCH
     ld ix,DISPBF
-    sub 08h
+    sub a,08h
     ld hl,STATE
     ld (hl),a
     ld hl,STMINOR
@@ -740,7 +740,7 @@ LOCSTBF:
 
 LOCSTNA:
     ld a,(STATE)
-    sub 04h
+    sub a,04h
     add a,a
     add a,a
     ld de,STEPTAB
