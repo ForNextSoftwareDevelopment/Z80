@@ -2406,19 +2406,29 @@ namespace Z80
                             }
 
                             break;
-                    }            
+                    }
 
                     // Show ascii if db
-                    if ((opcode == "db") && (operands.Length > 0))
+                    if (((opcode == "db") || (opcode == ".db") || (opcode == ".text")) && (operands.Length > 0))
                     {
-                        calcByte = GetByte(operands[0], out string resultdb);
-                        if (resultdb == "OK")
+                        string strAscii = " ('";
+
+                        for (int i = 0; i < operands.Length; i++)
                         {
-                            if ((calcByte >= 32) && (calcByte < 127))
+                            calcByte = GetByte(operands[i], out string resultdb);
+                            if (resultdb == "OK")
                             {
-                                programView[lineNumber] += " ('" + Convert.ToChar(calcByte) + "')";
+                                if ((calcByte >= 32) && (calcByte < 127))
+                                {
+                                    strAscii += Convert.ToChar(calcByte);
+                                } else
+                                {
+                                    strAscii += '.';
+                                }
                             }
                         }
+
+                        programView[lineNumber] += strAscii + "')";
                     }
 
                     // Show ascii if ld
