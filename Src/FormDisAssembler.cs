@@ -127,12 +127,13 @@ namespace Z80
             // Get character index from start of line at cursor position
             int index = richTextBoxProgram.GetFirstCharIndexOfCurrentLine();
 
-            // Get address
-            string str = richTextBoxProgram.Text.Substring(index, 4);
-
-            // If valid, put in textbox for adding exe addresses    
+            string str = null;
             try
             {
+                // Get address
+                str = richTextBoxProgram.Text.Substring(index, 4);
+
+                // If valid, put in textbox for adding exe addresses    
                 int exeAddress = UInt16.Parse(str, System.Globalization.NumberStyles.HexNumber);
             } catch (Exception)
             {
