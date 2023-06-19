@@ -2338,7 +2338,7 @@ namespace Z80
                                                 calcShort = Get2Bytes(operands[i], out string oResult);
                                                 if (oResult == "OK")
                                                 {
-                                                    int offset = calcShort - locationCounter;
+                                                    int offset = calcShort - locationCounter - 1;
                                                     if (offset > 127) return ("Offset to large for " + opcode + ":\r\nOffset = " + offset + " (max 127)\r\nAt line " + (lineNumber + 1));
                                                     if (offset < -128) return ("Offset to small for " + opcode + ":\r\nOffset = " + offset + " (min -128)\r\nAt line " + (lineNumber + 1));
                                                     RAMprogramLine[locationCounter] = lineNumber;
