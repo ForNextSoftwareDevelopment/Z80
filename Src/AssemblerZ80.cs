@@ -2338,8 +2338,11 @@ namespace Z80
                                                 calcShort = Get2Bytes(operands[i], out string oResult);
                                                 if (oResult == "OK")
                                                 {
+                                                    int offset = calcShort - locationCounter;
+                                                    if (offset > 127) return ("Offset to large for " + opcode + ":\r\nOffset = " + offset + " (max 127)\r\nAt line " + (lineNumber + 1));
+                                                    if (offset < -128) return ("Offset to small for " + opcode + ":\r\nOffset = " + offset + " (min -128)\r\nAt line " + (lineNumber + 1));
                                                     RAMprogramLine[locationCounter] = lineNumber;
-                                                    RAM[locationCounter++] = (byte)(calcShort - locationCounter);
+                                                    RAM[locationCounter++] = (byte)(offset);
                                                 } else
                                                 {
                                                     return ("Invalid operand for " + opcode + ":\r\n" + oResult + "\r\nAt line " + (lineNumber + 1));
@@ -2406,29 +2409,19 @@ namespace Z80
                             }
 
                             break;
-                    }
+                    }            
 
                     // Show ascii if db
-                    if (((opcode == "db") || (opcode == ".db") || (opcode == ".text")) && (operands.Length > 0))
+                    if ((opcode == "db") && (operands.Length > 0))
                     {
-                        string strAscii = " ('";
-
-                        for (int i = 0; i < operands.Length; i++)
+                        calcByte = GetByte(operands[0], out string resultdb);
+                        if (resultdb == "OK")
                         {
-                            calcByte = GetByte(operands[i], out string resultdb);
-                            if (resultdb == "OK")
+                            if ((calcByte >= 32) && (calcByte < 127))
                             {
-                                if ((calcByte >= 32) && (calcByte < 127))
-                                {
-                                    strAscii += Convert.ToChar(calcByte);
-                                } else
-                                {
-                                    strAscii += '.';
-                                }
+                                programView[lineNumber] += " ('" + Convert.ToChar(calcByte) + "')";
                             }
                         }
-
-                        programView[lineNumber] += strAscii + "')";
                     }
 
                     // Show ascii if ld
