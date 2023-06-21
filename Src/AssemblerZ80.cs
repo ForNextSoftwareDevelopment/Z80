@@ -806,8 +806,8 @@ namespace Z80
             {
                 foreach (KeyValuePair<string, int> keyValuePair in addressSymbolTable)
                 {
-                    // Replace $ with location counter -1 (location of the opcode)
-                    if (str.Trim() == "$") arg = arg.Replace("$", (locationCounter - 1).ToString());
+                    // Replace $ with location counter
+                    if (str.Trim() == "$") arg = arg.Replace("$", (locationCounter).ToString());
 
                     if (str.ToLower().Trim() == keyValuePair.Key.ToLower().Trim())
                     {
