@@ -743,7 +743,7 @@ namespace Z80
             }
 
             // Process low order byte of argument
-            if (arg.ToLower().Contains("LOW("))
+            if (arg.ToLower().Contains("low("))
             {
                 int start = arg.IndexOf('(') + 1;
                 int end = arg.IndexOf(')', start);
@@ -761,7 +761,7 @@ namespace Z80
             }
 
             // Process high order byte of argument
-            if (arg.ToLower().Contains("HIGH("))
+            if (arg.ToLower().Contains("high("))
             {
                 int start = arg.IndexOf('(') + 1;
                 int end = arg.IndexOf(')', start);
@@ -779,10 +779,10 @@ namespace Z80
             }
 
             // Replace AND with & as token
-            arg = arg.Replace("AND", "&");
+            arg = arg.ToLower().Replace("and", "&");
 
             // Replace OR with | as token
-            arg = arg.Replace("OR", "|");
+            arg = arg.ToLower().Replace("or", "|");
 
             // Calculate expression
             byte calc = Calculator.CalculateByte(arg, out string res);
