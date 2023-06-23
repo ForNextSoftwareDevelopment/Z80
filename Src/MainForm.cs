@@ -1035,7 +1035,7 @@ namespace Z80
             UpdateFlags();
             UpdateInterrupts();
 
-            if (error == "")
+            if ((error == "") && (assemblerZ80.RAMprogramLine[nextInstrAddress] != -1))
             {
                 ChangeColorRTBLine(assemblerZ80.RAMprogramLine[nextInstrAddress], false);
             } else if (error == "System Halted")

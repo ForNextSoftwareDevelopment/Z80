@@ -1475,7 +1475,13 @@ namespace Z80
                         }
 
                         // ADD the label/value
-                        addressSymbolTable.Add(label, calc);
+                        if (label != "")
+                        {
+                            addressSymbolTable.Add(label, calc);
+                        } else
+                        {
+                            return ("Syntax: [LABEL] equ [VALUE] at line " + (lineNumber + 1));
+                        }
 
                         // Next line
                         continue;
@@ -2114,7 +2120,7 @@ namespace Z80
                             for (k = 0; k < operands.Length; k++)
                             {
                                 // Extract all dw operands
-                                calcShort = Get2Bytes(operands[0], out string resultdefw);
+                                calcShort = Get2Bytes(operands[k], out string resultdefw);
                                 if (resultdefw == "OK")
                                 {
                                     str = calcShort.ToString("X4");
