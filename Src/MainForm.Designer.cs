@@ -1440,6 +1440,7 @@ namespace Z80
             // tbSetProgramCounter
             // 
             this.tbSetProgramCounter.Location = new System.Drawing.Point(608, 13);
+            this.tbSetProgramCounter.MaxLength = 4;
             this.tbSetProgramCounter.Name = "tbSetProgramCounter";
             this.tbSetProgramCounter.Size = new System.Drawing.Size(41, 20);
             this.tbSetProgramCounter.TabIndex = 32;

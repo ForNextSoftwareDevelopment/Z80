@@ -437,7 +437,7 @@ namespace Z80
         /// <param name="e"></param>
         private void tbSetProgramCounter_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (e.KeyChar == Convert.ToChar(Keys.Enter))
+            if (e.KeyChar == Convert.ToChar(Keys.Enter) && (assemblerZ80 != null))
             {
                 nextInstrAddress = Convert.ToUInt16(tbSetProgramCounter.Text, 16);
                 labelPCRegister.Text = tbSetProgramCounter.Text;
@@ -2421,14 +2421,14 @@ namespace Z80
 
                 if ((instruction.Mnemonic != "-") && (instruction.Size != 0))
                 {
-                    int x = 2 + (numInstruction % 4) * 68;
+                    int x = 2 + (numInstruction % 4) * 72;
                     int y = 2 + (numInstruction / 4) * 25;
 
                     Button button = new Button();
                     button.BackColor = Color.LightGreen;
                     button.Location = new Point(x, y);
                     button.Name = "btn" + instruction.Opcode.ToString();
-                    button.Size = new Size(66, 23);
+                    button.Size = new Size(70, 23);
                     button.Text = instruction.Mnemonic;
                     button.UseVisualStyleBackColor = false;
                     button.Click += new EventHandler(this.btnCommand_Click);
@@ -2449,14 +2449,14 @@ namespace Z80
 
                 if ((instruction.Mnemonic != "-") && (instruction.Size != 0))
                 {
-                    int x = 2 + (numInstruction % 4) * 68;
+                    int x = 2 + (numInstruction % 4) * 72;
                     int y = 2 + (numInstruction / 4) * 25;
 
                     Button button = new Button();
                     button.BackColor = Color.LightGreen;
                     button.Location = new Point(x, y);
                     button.Name = "btn" + instruction.Opcode.ToString();
-                    button.Size = new Size(66, 23);
+                    button.Size = new Size(70, 23);
                     button.Text = instruction.Mnemonic;
                     button.UseVisualStyleBackColor = false;
                     button.Click += new EventHandler(this.btnCommand_Click);
@@ -2477,14 +2477,14 @@ namespace Z80
 
                 if ((instruction.Mnemonic != "-") && (instruction.Size != 0))
                 {
-                    int x = 2 + (numInstruction % 4) * 68;
+                    int x = 2 + (numInstruction % 4) * 72;
                     int y = 2 + (numInstruction / 4) * 25;
 
                     Button button = new Button();
                     button.BackColor = Color.LightGreen;
                     button.Location = new Point(x, y);
                     button.Name = "btn" + instruction.Opcode.ToString();
-                    button.Size = new Size(66, 23);
+                    button.Size = new Size(70, 23);
                     button.Text = instruction.Mnemonic;
                     button.UseVisualStyleBackColor = false;
                     button.Click += new EventHandler(this.btnCommand_Click);
@@ -2505,14 +2505,14 @@ namespace Z80
 
                 if ((instruction.Mnemonic != "-") && (instruction.Size != 0))
                 {
-                    int x = 2 + (numInstruction % 4) * 68;
+                    int x = 2 + (numInstruction % 4) * 72;
                     int y = 2 + (numInstruction / 4) * 25;
 
                     Button button = new Button();
                     button.BackColor = Color.LightGreen;
                     button.Location = new Point(x, y);
                     button.Name = "btn" + instruction.Opcode.ToString();
-                    button.Size = new Size(66, 23);
+                    button.Size = new Size(70, 23);
                     button.Text = instruction.Mnemonic;
                     button.UseVisualStyleBackColor = false;
                     button.Click += new EventHandler(this.btnCommand_Click);
@@ -2533,14 +2533,14 @@ namespace Z80
 
                 if ((instruction.Mnemonic != "-") && (instruction.Size != 0))
                 {
-                    int x = 2 + (numInstruction % 4) * 68;
+                    int x = 2 + (numInstruction % 4) * 72;
                     int y = 2 + (numInstruction / 4) * 25;
 
                     Button button = new Button();
                     button.BackColor = Color.LightGreen;
                     button.Location = new Point(x, y);
                     button.Name = "btn" + instruction.Opcode.ToString();
-                    button.Size = new Size(66, 23);
+                    button.Size = new Size(70, 23);
                     button.Text = instruction.Mnemonic;
                     button.UseVisualStyleBackColor = false;
                     button.Click += new EventHandler(this.btnCommand_Click);

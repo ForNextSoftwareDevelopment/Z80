@@ -2478,6 +2478,11 @@ namespace Z80
                     }
                 } catch (Exception exception)
                 {
+                    if (locationCounter > 0xFFFF)
+                    {
+                        return ("MEMORY OVERRUN AT LINE " + (lineNumber + 1));
+                    }
+
                     MessageBox.Show(exception.Message, "SECONDPASS", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return ("EXCEPTION ERROR AT LINE " + (lineNumber + 1));
                 }
