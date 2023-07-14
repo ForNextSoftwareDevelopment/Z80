@@ -737,7 +737,7 @@ namespace Z80
                 {
                     if (str.ToLower().Trim() == keyValuePair.Key.ToLower().Trim())
                     {
-                        arg = arg.Replace(keyValuePair.Key, keyValuePair.Value.ToString());
+                        arg = arg.Replace(arg, keyValuePair.Value.ToString());
                     }
                 }
             }
@@ -811,7 +811,7 @@ namespace Z80
 
                     if (str.ToLower().Trim() == keyValuePair.Key.ToLower().Trim())
                     {
-                        arg = arg.Replace(keyValuePair.Key, keyValuePair.Value.ToString());
+                        arg = arg.Replace(arg, keyValuePair.Value.ToString());
                     }
                 }
             }
@@ -1508,6 +1508,12 @@ namespace Z80
                         if ((num_quotes % 2) == 0)
                         {
                             string label = line.Substring(0, end_of_label_pos).Trim();
+
+                            // Check for empty labels
+                            if ((label == null) || (label == ""))
+                            {
+                                return ("Empty label at line " + (lineNumber + 1));
+                            }
 
                             // Check for spaces in label
                             if (label.Contains(" "))
