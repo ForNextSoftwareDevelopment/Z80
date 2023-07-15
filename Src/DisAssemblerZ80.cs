@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Windows.Forms;
 
 namespace Z80
 {
@@ -66,9 +67,15 @@ namespace Z80
             // Add first address to start disassemble from
             addresses.Add(startAddress, false);
 
+            // Check if address range falls into 64K
+            if (loadAddress + bytes.Length > 0x10000)
+            {
+                MessageBox.Show("Program is to large (for this start address):\r\nthe end address is 0x" + (loadAddress + bytes.Length).ToString("X"), "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
             // Check if address range falls into hardware interrupts and/or restarts (add those addresses too)
-            UInt16 lowestAddress = loadAddress;
-            UInt16 highestAddress = Convert.ToUInt16(loadAddress + Convert.ToUInt16(bytes.Length));
+            int lowestAddress = loadAddress;
+            int highestAddress = loadAddress + bytes.Length;
 
             // NMI (Non-Maskable) 
             if ((lowestAddress <= 0x66) && (highestAddress >= 0x00066))
@@ -131,7 +138,7 @@ namespace Z80
             dtProgram.Columns.Add("size", typeof(UInt16));
             dtProgram.Columns.Add("type", typeof(int));
 
-            dtProgram.Rows.Add(null, "org " + loadAddress.ToString("X4"), 0);
+            dtProgram.Rows.Add(null, "org " + loadAddress.ToString("X4") + "h", 0);
         }
 
         #endregion
@@ -415,6 +422,9 @@ namespace Z80
 
                     // Set this key has been done
                     addresses[addressKeyValuePair] = true;
+
+                    // Do regular events
+                    Application.DoEvents();
                 }
             } while (!ready);
 

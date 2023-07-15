@@ -740,6 +740,12 @@ namespace Z80
                 FormAddresses formAddresses = new FormAddresses();
                 formAddresses.ShowDialog();
 
+                if (formAddresses.loadAddress + bytes.Length > 0x10000)
+                {
+                    MessageBox.Show("Program is to large (for this start address):\r\nthe end address is 0x" + (formAddresses.loadAddress + bytes.Length).ToString("X"), "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 FormDisAssembler disAssemblerForm = new FormDisAssembler(bytes, formAddresses.loadAddress, formAddresses.startAddress, formAddresses.useLabels);
                 DialogResult dialogResult = disAssemblerForm.ShowDialog();
                 if (dialogResult == DialogResult.OK)
