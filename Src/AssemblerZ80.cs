@@ -2111,6 +2111,11 @@ namespace Z80
                                 calcByte = GetByte(operands[k], out string resultdb);
                                 if (resultdb == "OK")
                                 {
+                                    if (RAMprogramLine[locationCounter] != -1)
+                                    {
+                                        return ("Allready code at 0x" + locationCounter.ToString("X4") + " (from line " + (RAMprogramLine[locationCounter] +1).ToString() + ") for " + opcode + " at line " + (lineNumber + 1));
+                                    }
+
                                     RAMprogramLine[locationCounter] = lineNumber;
                                     RAM[locationCounter++] = calcByte;
                                 } else
@@ -2129,6 +2134,11 @@ namespace Z80
                                 calcShort = Get2Bytes(operands[k], out string resultdefw);
                                 if (resultdefw == "OK")
                                 {
+                                    if (RAMprogramLine[locationCounter] != -1)
+                                    {
+                                        return ("Allready code at 0x" + locationCounter.ToString("X4") + " (from line " + (RAMprogramLine[locationCounter] +1).ToString() + ") for " + opcode + " at line " + (lineNumber + 1));
+                                    }
+
                                     str = calcShort.ToString("X4");
                                     RAMprogramLine[locationCounter] = lineNumber;
                                     RAM[locationCounter++] = Convert.ToByte(str.Substring(2, 2), 16);
@@ -2149,6 +2159,11 @@ namespace Z80
                             {
                                 while (calcShort != 0)
                                 {
+                                    if (RAMprogramLine[locationCounter] != -1)
+                                    {
+                                        return ("Allready code at 0x" + locationCounter.ToString("X4") + " (from line " + (RAMprogramLine[locationCounter] +1).ToString() + ") for " + opcode + " at line " + (lineNumber + 1));
+                                    }
+
                                     // We don't have to initialize operands for ds, just reserve space for them
                                     RAMprogramLine[locationCounter] = lineNumber;
                                     locationCounter++;
@@ -2261,6 +2276,11 @@ namespace Z80
                             // Instruction to handle
                             Instruction instruction = found[0];
 
+                            if (RAMprogramLine[locationCounter] != -1)
+                            {
+                                return ("Allready code at 0x" + locationCounter.ToString("X4") + " (from line " + (RAMprogramLine[locationCounter] +1).ToString() + ") for " + opcode + " at line " + (lineNumber + 1));
+                            }
+
                             RAMprogramLine[locationCounter] = lineNumber;
 
                             if (foundIXbit)
@@ -2308,6 +2328,11 @@ namespace Z80
                             {
                                 if ((argumentsZ80Instruction[i] != operands[i]) || (operands[i] == "n") || (operands[i] == "nn"))
                                 {
+                                    if (RAMprogramLine[locationCounter] != -1)
+                                    {
+                                        return ("Allready code at 0x" + locationCounter.ToString("X4") + " (from line " + (RAMprogramLine[locationCounter] +1).ToString() + ") for " + opcode + " at line " + (lineNumber + 1));
+                                    }
+
                                     switch (argumentsZ80Instruction[i])
                                     {
                                         case "n":
@@ -2594,7 +2619,7 @@ namespace Z80
                     num = byteInstruction - 0xA0;
                     result = GetRegisterValue((byte)num, ref val);
                     if (!result) return ("Can't get the register value");
-                    Calculate(registerA, val, 0, OPERATOR.AND);
+                    registerA = Calculate(registerA, val, 0, OPERATOR.AND);
                     registerPC++;
                 } else if (byteInstruction == 0xDC)                                                                         // call c,nn    
                 {
