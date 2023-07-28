@@ -1572,6 +1572,7 @@ namespace Z80
                     while (line.Length < 6) line += " ";
                     for (int i=0; i<operands.Length; i++)
                     {
+                        operands[i] = operands[i].Trim();
                         if (i != 0) line += ",";
                         line += operands[i];
                     }
