@@ -1338,7 +1338,7 @@ namespace Z80
                 addressSymbolTable = "";
                 foreach (string line in tempArray)
                 {
-                    addressSymbolTable += line + '\n';
+                    if (line != "") addressSymbolTable += line + '\n';
                 }
 
                 // Add controls to form
@@ -1354,6 +1354,17 @@ namespace Z80
                 textBox.BorderStyle = BorderStyle.None;
                 textBox.Location = new Point(10, 10);
                 textBox.Select(0, 0);
+
+                textBox.Click += new EventHandler((object o, EventArgs a) =>
+                {
+                    int position = textBox.GetLineFromCharIndex(textBox.SelectionStart);
+                    string line = textBox.Lines[position];
+                    textBox.Select(textBox.GetFirstCharIndexFromLine(position), textBox.Text.IndexOf(Environment.NewLine, position));
+                    string[] parts = line.Split(' ');
+                    bool result = Int32.TryParse(parts[parts.Length - 1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int address);
+                    if (result) tbMemoryStartAddress.Text = address.ToString("X4");
+                    UpdateMemoryPanel(GetTextBoxMemoryStartAddress(), nextInstrAddress);
+                });
 
                 addressSymbolTableForm.Controls.Add(textBox);
                 addressSymbolTableForm.Controls.Add(btnOk);
@@ -1725,6 +1736,8 @@ namespace Z80
                 labelERegister.Text = assemblerZ80.registerE.ToString("X").PadLeft(2, '0');
                 labelHRegister.Text = assemblerZ80.registerH.ToString("X").PadLeft(2, '0');
                 labelLRegister.Text = assemblerZ80.registerL.ToString("X").PadLeft(2, '0');
+                labelIRegister.Text = assemblerZ80.registerI.ToString("X").PadLeft(2, '0');
+                labelRRegister.Text = assemblerZ80.registerR.ToString("X").PadLeft(2, '0');
 
                 labelAaltRegister.Text = assemblerZ80.registerAalt.ToString("X").PadLeft(2, '0');
                 labelBaltRegister.Text = assemblerZ80.registerBalt.ToString("X").PadLeft(2, '0');
@@ -1762,6 +1775,9 @@ namespace Z80
 
                 labelPCRegister.Text = "0000";
                 labelSPRegister.Text = "0000";
+
+                labelIRegister.Text = "00";
+                labelRRegister.Text = "00";
             }
         }
 
