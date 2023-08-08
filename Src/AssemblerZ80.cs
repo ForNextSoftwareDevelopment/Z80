@@ -644,6 +644,7 @@ namespace Z80
                 case OPERATOR.SLL:
                     msb = (arg & 0b10000000) == 0b10000000;
                     result = (byte)(arg << 1);
+                    result = (byte)(result | 0b00000001);
 
                     // Carry flag
                     if (msb)
@@ -2852,7 +2853,7 @@ namespace Z80
                         flagC = true;
                         high += 0x60;
                     }
-                    registerA = (byte)(high * 0x0100 + low);
+                    registerA = (byte)(high + low);
                     registerPC++;
                 } else if (byteInstruction == 0x3D)                                                                         // dec a
                 {
