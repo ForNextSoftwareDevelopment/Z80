@@ -736,7 +736,7 @@ namespace Z80
                 {
                     if (str.Trim() == keyValuePair.Key.Trim())
                     {
-                        arg = arg.Replace(arg, keyValuePair.Value.ToString());
+                        arg = arg.Replace(str, keyValuePair.Value.ToString());
                     }
                 }
             }
@@ -810,7 +810,7 @@ namespace Z80
 
                     if (str.Trim() == keyValuePair.Key.Trim())
                     {
-                        arg = arg.Replace(arg, keyValuePair.Value.ToString());
+                        arg = arg.Replace(str, keyValuePair.Value.ToString());
                     }
                 }
             }
