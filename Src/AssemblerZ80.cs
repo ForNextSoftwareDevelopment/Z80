@@ -609,9 +609,7 @@ namespace Z80
 
                 case OPERATOR.SLA:
                     msb = (arg & 0b10000000) == 0b10000000;
-                    lsb = (arg & 0b00000001) == 0b00000001;
                     result = (byte)(arg << 1);
-                    if (lsb) result = (byte)(result | 0b00000001);
 
                     // Carry flag
                     if (msb)
