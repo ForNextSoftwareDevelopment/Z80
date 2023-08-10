@@ -4880,7 +4880,7 @@ namespace Z80
                     byte value2 = (byte)(registerIY);
                     registerA = Calculate(value1, value2, 0, OPERATOR.SUB);
                     registerPC++;
-                } else if (byteInstruction == 0xA6)                                                                         // sub a,(iy+o)
+                } else if (byteInstruction == 0x96)                                                                         // sub a,(iy+o)
                 {
                     registerPC++;
                     byte offset = RAM[registerPC];
