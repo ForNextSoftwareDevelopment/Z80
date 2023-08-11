@@ -4284,7 +4284,9 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0xCB)                                                                         // to IXBit
                 {
-                    RunInstructionIXBit();
+                    registerPC++;
+                    string message = RunInstructionIXBit();
+                    if (message != "") return (message);
                 } else
                 {
                     return ("Unknown IX instruction '" + byteInstruction.ToString("X2") + "'");
@@ -4912,7 +4914,9 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0xCB)                                                                         // to IYBit
                 {
-                    RunInstructionIYBit();
+                    registerPC++;
+                    string message = RunInstructionIYBit();
+                    if (message != "") return (message);
                 } else
                 {
                     return ("Unknown IY instruction '" + byteInstruction.ToString("X2") + "'");
