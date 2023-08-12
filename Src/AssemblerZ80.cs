@@ -1598,7 +1598,7 @@ namespace Z80
                                 // Double quotes
                                 int start = operands[i].IndexOf("\"") + 1;
                                 int end = 0;
-                                if (start < operands[i].Length - 2)
+                                if (start < operands[i].Length - 1)
                                 {
                                     end = operands[i].IndexOf("\"", start + 1);
                                 } else
@@ -1625,7 +1625,7 @@ namespace Z80
                                 // Single quotes
                                 int start = operands[i].IndexOf("\'") + 1;
                                 int end = 0;
-                                if (start < operands[i].Length - 2)
+                                if (start < operands[i].Length - 1)
                                 {
                                     end = operands[i].IndexOf("\'", start + 1);
                                 } else
