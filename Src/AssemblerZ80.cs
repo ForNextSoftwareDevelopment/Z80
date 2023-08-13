@@ -1435,14 +1435,20 @@ namespace Z80
                     }
 
                     // Replace single characters (in between single quotes) with HEX value
-                    int startQuote = line.IndexOf('\'');
-                    int endQuote = 0;
-                    if (startQuote < line.Length - 2) endQuote = line.IndexOf('\'', startQuote + 1);
-                    if ((startQuote != -1) && (endQuote == startQuote + 2))
+                    bool found;
+                    do
                     {
-                        char ch = line[startQuote + 1];
-                        line = line.Replace("'" + ch + "'", ((int)ch).ToString("X2") + "H");
-                    }
+                        found = false;
+                        int startQuote = line.IndexOf('\'');
+                        int endQuote = 0;
+                        if (startQuote < line.Length - 2) endQuote = line.IndexOf('\'', startQuote + 1);
+                        if ((startQuote != -1) && (endQuote == startQuote + 2))
+                        {
+                            found = true;
+                            char ch = line[startQuote + 1];
+                            line = line.Replace("'" + ch + "'", ((int)ch).ToString("X2") + "H");
+                        }
+                    } while (found);
                 } catch (Exception exception)
                 {
                     MessageBox.Show(exception.Message, "FirstPass:Quotes", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1549,6 +1555,83 @@ namespace Z80
                     }
                 }
 
+                try
+                {
+                    // Check for opcode (directive) db, replace chars/strings with hex values
+                    if (line.ToLower().StartsWith("db") || line.ToLower().StartsWith(".db") || line.ToLower().StartsWith("defb") || line.ToLower().StartsWith(".text"))
+                    {
+                        string lineDB = line;
+
+                        // Create new line, copy opcode
+                        opcode = lineDB.Substring(0, line.IndexOf(" "));
+                        line = opcode;
+                        for (int i = line.Length; i < 6; i++)
+                        {
+                            line += " ";
+                        }
+
+                        // Traverse the line from left to right
+                        int index = opcode.Length;
+                        bool stringProcessing = false;
+                        while (index < lineDB.Length)
+                        {
+                            if ((lineDB[index] == '\"') || (lineDB[index] == '\''))
+                            {
+                                // Char or string found
+                                stringProcessing = true;
+                                char endChar = lineDB[index];
+
+                                if (index < lineDB.Length - 1) index++;
+                                char processChar = lineDB[index];
+
+                                // Replace until end of string found
+                                while ((index < lineDB.Length) && (processChar != endChar))
+                                {
+                                    processChar = lineDB[index];
+                                    line += ((int)processChar).ToString("X2") + "H";
+                                    line += ", ";
+                                    index++;
+                                }
+
+                                stringProcessing = false;
+                            } else if ((lineDB[index] == ',') || (lineDB[index] == ' ') || (lineDB[index] == '\t') || (lineDB[index] == '\r') || (lineDB[index] == '\n'))
+                            {
+                                // Skip these chars
+                                index++;
+                            } else
+                            {
+                                // Just copy up to next comma or end of line
+                                while ((index < lineDB.Length) && (lineDB[index] != ','))
+                                {
+                                    line += lineDB[index];
+                                    index++;
+                                }
+
+                                line += ", ";
+                            }
+                        }
+
+                        // Remove last comma and space
+                        if (line.Length > 2)
+                        {
+                            line = line.Substring(0, line.Length - 2);
+                        } else
+                        {
+                            return (opcode + " directive has an error at line " + (lineNumber + 1));
+                        }
+
+                        // Give warning if an unclosed string has been found
+                        if (stringProcessing)
+                        {
+                            return (opcode + " directive has an unclosed string at line " + (lineNumber + 1));
+                        }
+                    }
+                } catch (Exception exception)
+                {
+                    MessageBox.Show(exception.Message, "FirstPass:db", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return ("EXCEPTION ERROR AT LINE " + (lineNumber + 1));
+                }
+
                 // Get the opcode and operands
                 try
                 {
@@ -1578,81 +1661,6 @@ namespace Z80
                 } catch (Exception exception)
                 {
                     MessageBox.Show(exception.Message, "FirstPass:Opcode", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return ("EXCEPTION ERROR AT LINE " + (lineNumber + 1));
-                }
-
-                try
-                {
-                    // Check for opcode (directive) db
-                    if (opcode.Equals("db") || opcode.Equals("defb"))
-                    {
-                        line = "db    ";
-
-                        // Check if db has strings 
-                        for (int i=0; i < operands.Length; i++)
-                        {
-                            if (i != 0) line += ", ";
-
-                            if (operands[i].Contains("\""))
-                            {
-                                // Double quotes
-                                int start = operands[i].IndexOf("\"") + 1;
-                                int end = 0;
-                                if (start < operands[i].Length - 1)
-                                {
-                                    end = operands[i].IndexOf("\"", start + 1);
-                                } else
-                                {
-                                    return ("db directive has an unclosed string at line " + (lineNumber + 1));
-                                }
-
-                                if (end <= 0)
-                                {
-                                    return ("db directive has an unclosed string at line " + (lineNumber + 1));
-                                }
-
-                                string str = operands[i].Substring(start, end - start);
-                                for (int j=0; j<str.Length; j++)
-                                {
-                                    if (j != 0) line += ", ";
-                                    line += ((int)str[j]).ToString("X2") + "H";
-                                }
-
-                                // ADD end of string
-                                line += "0";
-                            } else if (operands[i].Contains("\'"))
-                            {
-                                // Single quotes
-                                int start = operands[i].IndexOf("\'") + 1;
-                                int end = 0;
-                                if (start < operands[i].Length - 1)
-                                {
-                                    end = operands[i].IndexOf("\'", start + 1);
-                                } else
-                                {
-                                    return ("db directive has an unclosed string at line " + (lineNumber + 1));
-                                }
-
-                                if (end <= 0)
-                                {
-                                    return ("db directive has an unclosed string at line " + (lineNumber + 1));
-                                }
-
-                                string str = operands[i].Substring(start, end - start);
-                                for (int j = 0; j < str.Length; j++)
-                                {
-                                    if (j != 0) line += ", ";
-                                    line += ((int)str[j]).ToString("X2") + "H";
-                                }
-                            } else
-                            {
-                                line += operands[i];
-                            }
-                        }
-                    }
-                } catch (Exception exception)
-                {
-                    MessageBox.Show(exception.Message, "FirstPass:db", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return ("EXCEPTION ERROR AT LINE " + (lineNumber + 1));
                 }
 
@@ -1783,20 +1791,8 @@ namespace Z80
                         // Loop for traversing after db
                         for (int pos = 0; pos < operands.Length; pos++)
                         {
-                            // Check for char operand
-                            if (operands[pos].Contains("'"))
-                            {
-                                // Size of chars minus 2 bytes for ' 
-                                locationCounter += operands[pos].Length - 2;
-                            } else if (operands[pos].Contains("\""))
-                            {
-                                // Size of string minus 2 bytes for " plus one byte for end of string char (0)
-                                locationCounter += operands[pos].Length - 1;
-                            } else
-                            {
-                                // get to next location by skipping location for byte
-                                locationCounter++;
-                            }
+                            // get to next location by skipping location for byte
+                            locationCounter++;
                         }
 
                         // Copy to program for second pass
