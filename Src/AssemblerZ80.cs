@@ -1588,8 +1588,11 @@ namespace Z80
                                 while ((index < lineDB.Length) && (processChar != endChar))
                                 {
                                     processChar = lineDB[index];
-                                    line += ((int)processChar).ToString("X2") + "H";
-                                    line += ", ";
+                                    if ((processChar != endChar))
+                                    {
+                                        line += ((int)processChar).ToString("X2") + "H";
+                                        line += ", ";
+                                    }
                                     index++;
                                 }
 
