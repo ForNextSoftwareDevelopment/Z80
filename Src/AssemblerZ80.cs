@@ -209,9 +209,8 @@ namespace Z80
                     }
 
                     // Overflow flag
+                    flagPV = false;
                     if ((arg1 >= 0x80) && (arg2 >= 0x80) && (result < 0x80)) flagPV = true;
-                    if ((arg1 >= 0x80) && (arg2 < 0x80)) flagPV = false;
-                    if ((arg1 < 0x80) && (arg2 >= 0x80)) flagPV = false;
                     if ((arg1 < 0x80) && (arg2 < 0x80) && (result >= 0x80)) flagPV = true;
 
                     // Zero flag
@@ -262,10 +261,9 @@ namespace Z80
                     }
 
                     // Overflow flag
-                    if ((arg1 >= 0x80) && (arg2 >= 0x80)) flagPV = false;
-                    if ((arg1 >= 0x80) && (arg2 < 0x80) && (result < 0x80)) flagPV = true;
-                    if ((arg1 < 0x80) && (arg2 >= 0x80) && (result >= 0x80)) flagPV = true;
-                    if ((arg1 < 0x80) && (arg2 < 0x80)) flagPV = false;
+                    flagPV = false;
+                    if ((arg1 >= 0x80) && (arg2 >= 0x80) && (result < 0x80)) flagPV = true;
+                    if ((arg1 < 0x80) && (arg2 < 0x80) && (result >= 0x80)) flagPV = true;
 
                     // Zero flag
                     if (result == 0x00)
@@ -470,7 +468,7 @@ namespace Z80
                     result = (UInt16)(arg1 - arg2 - carry);
 
                     // Add/Subtract flag
-                    flagN = false;
+                    flagN = true;
 
                     // Carry flag
                     if (arg1 - arg2 - carry < 0x0000)
@@ -485,7 +483,7 @@ namespace Z80
                     b1 = (byte)(arg1 & 0xFF);  // Masking upper 8 bits
                     b2 = (byte)(arg2 & 0xFF);  // Masking upper 8 bits
 
-                    if (b1 - b2 < 0x00)
+                    if (b1 - b2 - carry < 0x00)
                     {
                         flagH = true;
                     } else
@@ -494,10 +492,9 @@ namespace Z80
                     }
 
                     // Overflow flag
-                    if ((arg1 >= 0x8000) && (arg2 >= 0x8000)) flagPV = false;
+                    flagPV = false;
                     if ((arg1 >= 0x8000) && (arg2 < 0x8000) && (result < 0x8000)) flagPV = true;
                     if ((arg1 < 0x8000) && (arg2 >= 0x8000) && (result >= 0x8000)) flagPV = true;
-                    if ((arg1 < 0x8000) && (arg2 < 0x8000)) flagPV = false;
 
                     // Zero flag
                     if (result == 0x0000)
@@ -3560,6 +3557,8 @@ namespace Z80
                     if (b != 0) flagPV = true; else flagPV = false;
                     b = (byte)(flags & 0x10);
                     if (b != 0) flagH = true; else flagH = false;
+                    b = (byte)(flags & 0x20);
+                    if (b != 0) flagN = true; else flagN = false;
                     b = (byte)(flags & 0x40);
                     if (b != 0) flagZ = true; else flagZ = false;
                     b = (byte)(flags & 0x80);
@@ -3593,6 +3592,7 @@ namespace Z80
                     if (flagZ) aflag += 0x40;
                     if (flagH) aflag += 0x10;
                     if (flagPV) aflag += 0x04;
+                    if (flagN) aflag += 0x02;
                     if (flagC) aflag += 0x01;
                     registerSP--;
                     RAM[registerSP] = registerA;
@@ -5277,7 +5277,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(registerSP);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.SUB);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
