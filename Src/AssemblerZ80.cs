@@ -21,19 +21,21 @@ namespace Z80
         public enum OPERATOR
         {
             NONE = 0,
-            ADD = 1,    // Add
-            SUB = 2,    // Subtract
-            AND = 3,    // Logical AND
-            OR = 4,     // Logical OR
-            XOR = 5,    // Logical Exclusive OR
-            RLC = 6,    // Rotate left with carry
-            RRC = 7,    // Rotate right with carry
-            RL = 8,     // Rotate left through carry 
-            RR = 9,     // Rotate right through carry 
-            SLA = 10,   // Arithmetic shift left  
-            SRA = 11,   // Arithmetic shift right
-            SLL = 12,   // Logical shift left
-            SRL = 13    // Logical shift right
+            ADD = 1,  // Add
+            ADC = 2,  // Add with carry
+            SUB = 3,  // Subtract
+            SBC = 4,  // Subtract with carry
+            AND = 5,  // Logical AND
+            OR = 6,  // Logical OR
+            XOR = 7,  // Logical Exclusive OR
+            RLC = 8,  // Rotate left with carry
+            RRC = 9,  // Rotate right with carry
+            RL = 10, // Rotate left through carry 
+            RR = 11, // Rotate right through carry 
+            SLA = 12, // Arithmetic shift left  
+            SRA = 13, // Arithmetic shift right
+            SLL = 14, // Logical shift left
+            SRL = 15  // Logical shift right
         }
 
         // Interrupt modes
@@ -171,17 +173,69 @@ namespace Z80
         /// </summary>
         /// <param name="arg1"></param>
         /// <param name="arg2"></param>
-        /// <param name="carry"></param>
         /// <param name="type"></param>
-        private byte Calculate(byte arg1, byte arg2, byte carry, OPERATOR type)
+        private byte Calculate(byte arg1, byte arg2, OPERATOR type)
         {
             int i, count;
             byte b1, b2;
+            byte carry = (byte)(flagC ? 1 : 0);
             byte result = (byte)0x00;
 
             switch (type)
             {
                 case OPERATOR.ADD:
+                    result = (byte)(arg1 + arg2);
+
+                    // Add/Subtract flag
+                    flagN = false;
+
+                    // Carry flag
+                    if (arg1 + arg2 > 0xFF)
+                    {
+                        flagC = true;
+                    } else
+                    {
+                        flagC = false;
+                    }
+
+                    // Half Carry flag
+                    b1 = (byte)(arg1 & 0x0F);  // Masking upper 4 bits
+                    b2 = (byte)(arg2 & 0x0F);  // Masking upper 4 bits
+
+                    if (b1 + b2 > 0x0F)
+                    {
+                        flagH = true;
+                    } else
+                    {
+                        flagH = false;
+                    }
+
+                    // Overflow flag
+                    flagPV = false;
+                    if ((arg1 >= 0x80) && (arg2 >= 0x80) && (result < 0x80)) flagPV = true;
+                    if ((arg1 < 0x80) && (arg2 < 0x80) && (result >= 0x80)) flagPV = true;
+
+                    // Zero flag
+                    if (result == 0x00)
+                    {
+                        flagZ = true;
+                    } else
+                    {
+                        flagZ = false;
+                    }
+
+                    // Sign flag
+                    if (result >= 0x80)
+                    {
+                        flagS = true;
+                    } else
+                    {
+                        flagS = false;
+                    }
+
+                    break;
+
+                case OPERATOR.ADC:
                     result = (byte)(arg1 + arg2 + carry);
 
                     // Add/Subtract flag
@@ -234,6 +288,58 @@ namespace Z80
                     break;
 
                 case OPERATOR.SUB:
+                    result = (byte)(arg1 - arg2);
+
+                    // Add/Subtract flag
+                    flagN = true;
+
+                    // Carry flag
+                    if (arg1 - arg2 < 0x00)
+                    {
+                        flagC = true;
+                    } else
+                    {
+                        flagC = false;
+                    }
+
+                    // Half Carry flag
+                    b1 = (byte)(arg1 & 0x0F);  // Masking upper 4 bits
+                    b2 = (byte)(arg2 & 0x0F);  // Masking upper 4 bits
+
+                    if (b1 - b2 < 0x00)
+                    {
+                        flagH = true;
+                    } else
+                    {
+                        flagH = false;
+                    }
+
+                    // Overflow flag
+                    flagPV = false;
+                    if ((arg1 >= 0x80) && (arg2 >= 0x80) && (result < 0x80)) flagPV = true;
+                    if ((arg1 < 0x80) && (arg2 < 0x80) && (result >= 0x80)) flagPV = true;
+
+                    // Zero flag
+                    if (result == 0x00)
+                    {
+                        flagZ = true;
+                    } else
+                    {
+                        flagZ = false;
+                    }
+
+                    // Sign flag
+                    if (result >= 0x80)
+                    {
+                        flagS = true;
+                    } else
+                    {
+                        flagS = false;
+                    }
+
+                    break;
+
+                case OPERATOR.SBC:
                     result = (byte)(arg1 - arg2 - carry);
 
                     // Add/Subtract flag
@@ -426,16 +532,45 @@ namespace Z80
         /// </summary>
         /// <param name="arg1"></param>
         /// <param name="arg2"></param>
-        /// <param name="carry"></param>
         /// <param name="type"></param>
-        private UInt16 Calculate(UInt16 arg1, UInt16 arg2, UInt16 carry, OPERATOR type)
+        private UInt16 Calculate(UInt16 arg1, UInt16 arg2, OPERATOR type)
         {
             UInt16 b1, b2;
+            byte carry = (byte)(flagC ? 1 : 0);
             UInt16 result = (UInt16)0x0000;
 
             switch (type)
             {
                 case OPERATOR.ADD:
+                    result = (UInt16)(arg1 + arg2);
+
+                    // Add/Subtract flag
+                    flagN = false;
+
+                    // Carry flag
+                    if (arg1 + arg2 > 0xFFFF)
+                    {
+                        flagC = true;
+                    } else
+                    {
+                        flagC = false;
+                    }
+
+                    // Half Carry flag
+                    b1 = (UInt16)(arg1 & 0xFF);  // Masking upper 8 bits
+                    b2 = (UInt16)(arg2 & 0xFF);  // Masking upper 8 bits
+
+                    if (b1 + b2 > 0xFF)
+                    {
+                        flagH = true;
+                    } else
+                    {
+                        flagH = false;
+                    }
+
+                    break;
+
+                case OPERATOR.ADC:
                     result = (UInt16)(arg1 + arg2 + carry);
 
                     // Add/Subtract flag
@@ -462,9 +597,32 @@ namespace Z80
                         flagH = false;
                     }
 
+                    // Overflow flag
+                    flagPV = false;
+                    if ((arg1 >= 0x8000) && (arg2 >= 0x8000) && (result < 0x8000)) flagPV = true;
+                    if ((arg1 < 0x8000) && (arg2 < 0x8000) && (result >= 0x8000)) flagPV = true;
+
+                    // Zero flag
+                    if (result == 0x0000)
+                    {
+                        flagZ = true;
+                    } else
+                    {
+                        flagZ = false;
+                    }
+
+                    // Sign flag
+                    if (result >= 0x8000)
+                    {
+                        flagS = true;
+                    } else
+                    {
+                        flagS = false;
+                    }
+
                     break;
 
-                case OPERATOR.SUB:
+                case OPERATOR.SBC:
                     result = (UInt16)(arg1 - arg2 - carry);
 
                     // Add/Subtract flag
@@ -2548,32 +2706,32 @@ namespace Z80
                 if (byteInstruction == 0xCE)                                                                                // adc a,n 
                 {
                     registerPC++;
-                    registerA = Calculate(registerA, RAM[registerPC], (byte)(flagC ? 1 : 0), OPERATOR.ADD);
+                    registerA = Calculate(registerA, RAM[registerPC], OPERATOR.ADC);
                     registerPC++;
                 } else if ((byteInstruction >= 0x88) && (byteInstruction <= 0x8F))                                          // adc a,r
                 {
                     num = byteInstruction - 0x88;
                     result = GetRegisterValue((byte)num, ref val);
                     if (!result) return ("Can't get the register value");
-                    registerA = Calculate(registerA, (byte)(val), (byte)(flagC ? 1 : 0), OPERATOR.ADD);
+                    registerA = Calculate(registerA, (byte)(val), OPERATOR.ADC);
                     registerPC++;
                 } else if (byteInstruction == 0xC6)                                                                         // add a,n
                 {
                     registerPC++;
-                    registerA = Calculate(registerA, RAM[registerPC], 0, OPERATOR.ADD);
+                    registerA = Calculate(registerA, RAM[registerPC], OPERATOR.ADD);
                     registerPC++;
                 } else if ((byteInstruction >= 0x80) && (byteInstruction <= 0x87))                                          // add a,r
                 {
                     num = byteInstruction - 0x80;
                     result = GetRegisterValue((byte)num, ref val);
                     if (!result) return ("Can't get the register value");
-                    registerA = Calculate(registerA, val, 0, OPERATOR.ADD);
+                    registerA = Calculate(registerA, val, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x09)                                                                         // add hl,bc
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerB + registerC);
                     UInt16 value2 = (UInt16)(0x0100 * registerH + registerL);
-                    UInt16 value = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.ADD);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -2582,7 +2740,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerD + registerE);
                     UInt16 value2 = (UInt16)(0x0100 * registerH + registerL);
-                    UInt16 value = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.ADD);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -2591,7 +2749,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(0x0100 * registerH + registerL);
-                    UInt16 value = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.ADD);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -2600,7 +2758,7 @@ namespace Z80
                 {
                     UInt16 value1 = registerSP;
                     UInt16 value2 = (UInt16)(0x0100 * registerH + registerL);
-                    UInt16 value = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.ADD);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -2608,14 +2766,14 @@ namespace Z80
                 } else if (byteInstruction == 0xE6)                                                                         // and n
                 {
                     registerPC++;
-                    registerA = Calculate(registerA, RAM[registerPC], 0, OPERATOR.AND);
+                    registerA = Calculate(registerA, RAM[registerPC], OPERATOR.AND);
                     registerPC++;
                 } else if ((byteInstruction >= 0xA0) && (byteInstruction <= 0xA7))                                          // and r
                 {
                     num = byteInstruction - 0xA0;
                     result = GetRegisterValue((byte)num, ref val);
                     if (!result) return ("Can't get the register value");
-                    registerA = Calculate(registerA, val, 0, OPERATOR.AND);
+                    registerA = Calculate(registerA, val, OPERATOR.AND);
                     registerPC++;
                 } else if (byteInstruction == 0xDC)                                                                         // call c,nn    
                 {
@@ -2814,7 +2972,7 @@ namespace Z80
                 } else if (byteInstruction == 0xFE)                                                                         // cp n  
                 {
                     registerPC++;
-                    Calculate(registerA, RAM[registerPC], 0, OPERATOR.SUB);
+                    Calculate(registerA, RAM[registerPC], OPERATOR.SUB);
                     registerPC++;
                 } else if ((byteInstruction >= 0xB8) && (byteInstruction <= 0xBF))                                          // cp r  
                 {
@@ -2822,7 +2980,7 @@ namespace Z80
                     byte compareValue = 0x00;
                     result = GetRegisterValue((byte)num, ref compareValue);
                     if (!result) return ("Can't get the register value");
-                    Calculate(registerA, compareValue, 0, OPERATOR.SUB);
+                    Calculate(registerA, compareValue, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0x2F)                                                                         // cpl
                 {
@@ -2852,50 +3010,50 @@ namespace Z80
                 } else if (byteInstruction == 0x3D)                                                                         // dec a
                 {
                     bool save_flag = flagC;
-                    registerA = Calculate(registerA, 0x01, 0, OPERATOR.SUB);
+                    registerA = Calculate(registerA, 0x01, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x05)                                                                         // dec b
                 {
                     bool save_flag = flagC;
-                    registerB = Calculate(registerB, 0x01, 0, OPERATOR.SUB);
+                    registerB = Calculate(registerB, 0x01, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x0D)                                                                         // dec c
                 {
                     bool save_flag = flagC;
-                    registerC = Calculate(registerC, 0x01, 0, OPERATOR.SUB);
+                    registerC = Calculate(registerC, 0x01, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x15)                                                                         // dec d
                 {
                     bool save_flag = flagC;
-                    registerD = Calculate(registerD, 0x01, 0, OPERATOR.SUB);
+                    registerD = Calculate(registerD, 0x01, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x1D)                                                                         // dec e
                 {
                     bool save_flag = flagC;
-                    registerE = Calculate(registerE, 0x01, 0, OPERATOR.SUB);
+                    registerE = Calculate(registerE, 0x01, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x25)                                                                         // dec h
                 {
                     bool save_flag = flagC;
-                    registerH = Calculate(registerH, 0x01, 0, OPERATOR.SUB);
+                    registerH = Calculate(registerH, 0x01, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x2D)                                                                         // dec l
                 {
                     bool save_flag = flagC;
-                    registerL = Calculate(registerL, 0x01, 0, OPERATOR.SUB);
+                    registerL = Calculate(registerL, 0x01, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x35)                                                                         // dec (hl)
                 {
                     bool save_flag = flagC;
                     UInt16 address = (UInt16)(0x0100 * registerH + registerL);
-                    RAM[address] = Calculate(RAM[address], 0x01, 0, OPERATOR.SUB);
+                    RAM[address] = Calculate(RAM[address], 0x01, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x0B)                                                                         // dec bc
@@ -3035,43 +3193,43 @@ namespace Z80
                 } else if (byteInstruction == 0x3C)                                                                         // inc a
                 {
                     bool save_flag = flagC;
-                    registerA = Calculate(registerA, 0x01, 0, OPERATOR.ADD);
+                    registerA = Calculate(registerA, 0x01, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x04)                                                                         // inc b
                 {
                     bool save_flag = flagC;
-                    registerB = Calculate(registerB, 0x01, 0, OPERATOR.ADD);
+                    registerB = Calculate(registerB, 0x01, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x0C)                                                                         // inc c
                 {
                     bool save_flag = flagC;
-                    registerC = Calculate(registerC, 0x01, 0, OPERATOR.ADD);
+                    registerC = Calculate(registerC, 0x01, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x14)                                                                         // inc d
                 {
                     bool save_flag = flagC;
-                    registerD = Calculate(registerD, 0x01, 0, OPERATOR.ADD);
+                    registerD = Calculate(registerD, 0x01, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x1C)                                                                         // inc e
                 {
                     bool save_flag = flagC;
-                    registerE = Calculate(registerE, 0x01, 0, OPERATOR.ADD);
+                    registerE = Calculate(registerE, 0x01, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x24)                                                                         // inc h
                 {
                     bool save_flag = flagC;
-                    registerH = Calculate(registerH, 0x01, 0, OPERATOR.ADD);
+                    registerH = Calculate(registerH, 0x01, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x2C)                                                                         // inc l
                 {
                     bool save_flag = flagC;
-                    registerL = Calculate(registerL, 0x01, 0, OPERATOR.ADD);
+                    registerL = Calculate(registerL, 0x01, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x34)                                                                         // inc (hl)
@@ -3079,7 +3237,7 @@ namespace Z80
                     bool save_flag = flagC;
                     UInt16 address = 0;
                     address = (UInt16)(0x0100 * registerH + registerL);
-                    RAM[address] = Calculate(RAM[address], 0x01, 0, OPERATOR.ADD);
+                    RAM[address] = Calculate(RAM[address], 0x01, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x03)                                                                         // inc bc
@@ -3532,12 +3690,12 @@ namespace Z80
                     num = byteInstruction - 0xB0;
                     result = GetRegisterValue((byte)num, ref val);
                     if (!result) return ("Can't get the register value");
-                    registerA = Calculate(registerA, val, 0, OPERATOR.OR);
+                    registerA = Calculate(registerA, val, OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xF6)                                                                         // or n
                 {
                     registerPC++;
-                    registerA = Calculate(registerA, RAM[registerPC], 0, OPERATOR.OR);
+                    registerA = Calculate(registerA, RAM[registerPC], OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xD3)                                                                         // out (n),a 
                 {
@@ -3875,12 +4033,12 @@ namespace Z80
                     num = byteInstruction - 0x98;
                     result = GetRegisterValue((byte)num, ref val);
                     if (!result) return ("Can't get the register value");
-                    registerA = Calculate(registerA, (byte)(val), (byte)(flagC ? 1 : 0), OPERATOR.SUB);
+                    registerA = Calculate(registerA, (byte)(val), OPERATOR.SBC);
                     registerPC++;
                 } else if (byteInstruction == 0xDE)                                                                         // sbc a,n
                 {
                     registerPC++;
-                    registerA = Calculate(registerA, (byte)(RAM[registerPC]), (byte)(flagC ? 1 : 0), OPERATOR.SUB);
+                    registerA = Calculate(registerA, (byte)(RAM[registerPC]), OPERATOR.SBC);
                     registerPC++;
                 } else if (byteInstruction == 0x37)                                                                         // scf
                 {
@@ -3891,24 +4049,24 @@ namespace Z80
                     num = byteInstruction - 0x90;
                     result = GetRegisterValue((byte)num, ref val);
                     if (!result) return ("Can't get the register value");
-                    registerA = Calculate(registerA, val, 0, OPERATOR.SUB);
+                    registerA = Calculate(registerA, val, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0xD6)                                                                         // sub n
                 {
                     registerPC++;
-                    registerA = Calculate(registerA, RAM[registerPC], 0, OPERATOR.SUB);
+                    registerA = Calculate(registerA, RAM[registerPC], OPERATOR.SUB);
                     registerPC++;
                 } else if ((byteInstruction >= 0xA8) && (byteInstruction <= 0xAF))                                          // xor r
                 {
                     num = byteInstruction - 0xA8;
                     result = GetRegisterValue((byte)num, ref val);
                     if (!result) return ("Can't get the register value");
-                    registerA = Calculate(registerA, val, 0, OPERATOR.XOR);
+                    registerA = Calculate(registerA, val, OPERATOR.XOR);
                     registerPC++;
                 } else if (byteInstruction == 0xEE)                                                                         // xor n
                 {
                     registerPC++;
-                    registerA = Calculate(registerA, RAM[registerPC], 0, OPERATOR.XOR);
+                    registerA = Calculate(registerA, RAM[registerPC], OPERATOR.XOR);
                     registerPC++;
                 } else if (byteInstruction == 0xDD)                                                                         // to IX
                 {
@@ -3965,13 +4123,13 @@ namespace Z80
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerA = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x85)                                                                         // add a,ixl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerA = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x86)                                                                         // add a,(ix+o)
                 {
@@ -3980,43 +4138,43 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerA = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x09)                                                                         // add ix,bc 
                 {
                     UInt16 value1 = registerIX;
                     UInt16 value2 = (UInt16)(0x0100 * registerB + registerC);
-                    registerIX = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerIX = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x19)                                                                         // add ix,de 
                 {
                     UInt16 value1 = registerIX;
                     UInt16 value2 = (UInt16)(0x0100 * registerD + registerE);
-                    registerIX = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerIX = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x29)                                                                         // add ix,ix 
                 {
                     UInt16 value1 = registerIX;
                     UInt16 value2 = registerIX;
-                    registerIX = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerIX = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x39)                                                                         // add ix,sp 
                 {
                     UInt16 value1 = registerIX;
                     UInt16 value2 = registerSP;
-                    registerIX = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerIX = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0xA4)                                                                         // and ixh
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.AND);
+                    registerA = Calculate(value1, value2, OPERATOR.AND);
                     registerPC++;
                 } else if (byteInstruction == 0xA5)                                                                         // and ixl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.AND);
+                    registerA = Calculate(value1, value2, OPERATOR.AND);
                     registerPC++;
                 } else if (byteInstruction == 0xA6)                                                                         // and (ix+o)
                 {
@@ -4025,7 +4183,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.AND);
+                    registerA = Calculate(value1, value2, OPERATOR.AND);
                     registerPC++;
                 } else if (byteInstruction == 0xFE)                                                                         // cp (ix+o)  
                 {
@@ -4034,7 +4192,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    Calculate(value1, value2, 0, OPERATOR.SUB);
+                    Calculate(value1, value2, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0x2B)                                                                         // dec ix
                 {
@@ -4045,7 +4203,7 @@ namespace Z80
                     bool save_flag = flagC;
                     byte value1 = (byte)(registerIX >> 8);
                     byte value2 = 1;
-                    val = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    val = Calculate(value1, value2, OPERATOR.SUB);
                     registerIX = (UInt16)((registerIX & 0x00FF) + (val << 8));
                     flagC = save_flag;
                     registerPC++;
@@ -4054,7 +4212,7 @@ namespace Z80
                     bool save_flag = flagC;
                     byte value1 = (byte)(registerIX);
                     byte value2 = 1;
-                    val = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    val = Calculate(value1, value2, OPERATOR.SUB);
                     registerIX = (UInt16)((registerIX & 0xFF00) + val);
                     flagC = save_flag;
                     registerPC++;
@@ -4066,7 +4224,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = RAM[address];
                     byte value2 = 1;
-                    RAM[address] = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    RAM[address] = Calculate(value1, value2, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0xE3)                                                                         // ex (sp),ix
@@ -4088,7 +4246,7 @@ namespace Z80
                     bool save_flag = flagC;
                     byte value1 = (byte)(registerIX >> 8);
                     byte value2 = 1;
-                    val = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    val = Calculate(value1, value2, OPERATOR.ADD);
                     registerIX = (UInt16)((registerIX & 0x00FF) + (val << 8));
                     flagC = save_flag;
                     registerPC++;
@@ -4097,7 +4255,7 @@ namespace Z80
                     bool save_flag = flagC;
                     byte value1 = (byte)(registerIX);
                     byte value2 = 1;
-                    val = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    val = Calculate(value1, value2, OPERATOR.ADD);
                     registerIX = (UInt16)((registerIX & 0xFF00) + val);
                     flagC = save_flag;
                     registerPC++;
@@ -4109,7 +4267,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = RAM[address];
                     byte value2 = 1;
-                    RAM[address] = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    RAM[address] = Calculate(value1, value2, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0xE9)                                                                         // jp (ix)
@@ -4208,13 +4366,13 @@ namespace Z80
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.OR);
+                    registerA = Calculate(value1, value2, OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xB5)                                                                         // or ixl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.OR);
+                    registerA = Calculate(value1, value2, OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xB6)                                                                         // or (ix+o)
                 {
@@ -4223,7 +4381,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.OR);
+                    registerA = Calculate(value1, value2, OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xE1)                                                                         // pop ix
                 {
@@ -4243,13 +4401,13 @@ namespace Z80
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    registerA = Calculate(value1, value2, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0x95)                                                                         // sub ixl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    registerA = Calculate(value1, value2, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0xA6)                                                                         // sub a,(ix+o)
                 {
@@ -4258,19 +4416,19 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    registerA = Calculate(value1, value2, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0xAC)                                                                         // xor ixh
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.XOR);
+                    registerA = Calculate(value1, value2, OPERATOR.XOR);
                     registerPC++;
                 } else if (byteInstruction == 0xAD)                                                                         // xor ixl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.XOR);
+                    registerA = Calculate(value1, value2, OPERATOR.XOR);
                     registerPC++;
                 } else if (byteInstruction == 0xAE)                                                                         // xor (ix+o)
                 {
@@ -4279,7 +4437,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.XOR);
+                    registerA = Calculate(value1, value2, OPERATOR.XOR);
                     registerPC++;
                 } else if (byteInstruction == 0xCB)                                                                         // to IXBit
                 {
@@ -4595,13 +4753,13 @@ namespace Z80
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerA = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x85)                                                                         // add a,iyl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerA = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x86)                                                                         // add a,(iy+o)
                 {
@@ -4610,43 +4768,43 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerA = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x09)                                                                         // add iy,bc 
                 {
                     UInt16 value1 = registerIY;
                     UInt16 value2 = (UInt16)(0x0100 * registerB + registerC);
-                    registerIY = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerIY = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x19)                                                                         // add iy,de 
                 {
                     UInt16 value1 = registerIY;
                     UInt16 value2 = (UInt16)(0x0100 * registerD + registerE);
-                    registerIY = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerIY = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x29)                                                                         // add iy,iy 
                 {
                     UInt16 value1 = registerIY;
                     UInt16 value2 = registerIY;
-                    registerIY = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerIY = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x39)                                                                         // add iy,sp 
                 {
                     UInt16 value1 = registerIY;
                     UInt16 value2 = registerSP;
-                    registerIY = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    registerIY = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0xA4)                                                                         // and iyh
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.AND);
+                    registerA = Calculate(value1, value2, OPERATOR.AND);
                     registerPC++;
                 } else if (byteInstruction == 0xA5)                                                                         // and iyl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.AND);
+                    registerA = Calculate(value1, value2, OPERATOR.AND);
                     registerPC++;
                 } else if (byteInstruction == 0xA6)                                                                         // and (iy+o)
                 {
@@ -4655,7 +4813,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.AND);
+                    registerA = Calculate(value1, value2, OPERATOR.AND);
                     registerPC++;
                 } else if (byteInstruction == 0xFE)                                                                         // cp (iy+o)  
                 {
@@ -4664,7 +4822,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    Calculate(value1, value2, 0, OPERATOR.SUB);
+                    Calculate(value1, value2, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0x2B)                                                                         // dec iy
                 {
@@ -4675,7 +4833,7 @@ namespace Z80
                     bool save_flag = flagC;
                     byte value1 = (byte)(registerIY >> 8);
                     byte value2 = 1;
-                    val = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    val = Calculate(value1, value2, OPERATOR.SUB);
                     registerIY = (UInt16)((registerIY & 0x00FF) + (val << 8));
                     flagC = save_flag;
                     registerPC++;
@@ -4684,7 +4842,7 @@ namespace Z80
                     bool save_flag = flagC;
                     byte value1 = (byte)(registerIY);
                     byte value2 = 1;
-                    val = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    val = Calculate(value1, value2, OPERATOR.SUB);
                     registerIY = (UInt16)((registerIY & 0xFF00) + val);
                     flagC = save_flag;
                     registerPC++;
@@ -4696,7 +4854,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = RAM[address];
                     byte value2 = 1;
-                    RAM[address] = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    RAM[address] = Calculate(value1, value2, OPERATOR.SUB);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0xE3)                                                                         // ex (sp),iy
@@ -4718,7 +4876,7 @@ namespace Z80
                     bool save_flag = flagC;
                     byte value1 = (byte)(registerIY >> 8);
                     byte value2 = 1;
-                    val = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    val = Calculate(value1, value2, OPERATOR.ADD);
                     registerIY = (UInt16)((registerIY & 0x00FF) + (val << 8));
                     flagC = save_flag;
                     registerPC++;
@@ -4727,7 +4885,7 @@ namespace Z80
                     bool save_flag = flagC;
                     byte value1 = (byte)(registerIY);
                     byte value2 = 1;
-                    val = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    val = Calculate(value1, value2, OPERATOR.ADD);
                     registerIY = (UInt16)((registerIY & 0xFF00) + val);
                     flagC = save_flag;
                     registerPC++;
@@ -4739,7 +4897,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = RAM[address];
                     byte value2 = 1;
-                    RAM[address] = Calculate(value1, value2, 0, OPERATOR.ADD);
+                    RAM[address] = Calculate(value1, value2, OPERATOR.ADD);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0xE9)                                                                         // jp (iy)
@@ -4838,13 +4996,13 @@ namespace Z80
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.OR);
+                    registerA = Calculate(value1, value2, OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xB5)                                                                         // or iyl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.OR);
+                    registerA = Calculate(value1, value2, OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xB6)                                                                         // or (iy+o)
                 {
@@ -4853,7 +5011,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.OR);
+                    registerA = Calculate(value1, value2, OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xE1)                                                                         // pop iy
                 {
@@ -4873,13 +5031,13 @@ namespace Z80
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    registerA = Calculate(value1, value2, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0x95)                                                                         // sub iyl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    registerA = Calculate(value1, value2, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0x96)                                                                         // sub a,(iy+o)
                 {
@@ -4888,19 +5046,19 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.SUB);
+                    registerA = Calculate(value1, value2, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0xAC)                                                                         // xor iyh
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.XOR);
+                    registerA = Calculate(value1, value2, OPERATOR.XOR);
                     registerPC++;
                 } else if (byteInstruction == 0xAD)                                                                         // xor iyl
                 {
                     byte value1 = registerA;
                     byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, 0, OPERATOR.XOR);
+                    registerA = Calculate(value1, value2, OPERATOR.XOR);
                     registerPC++;
                 } else if (byteInstruction == 0xAE)                                                                         // xor (iy+o)
                 {
@@ -4909,7 +5067,7 @@ namespace Z80
                     UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = registerA;
                     byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, 0, OPERATOR.XOR);
+                    registerA = Calculate(value1, value2, OPERATOR.XOR);
                     registerPC++;
                 } else if (byteInstruction == 0xCB)                                                                         // to IYBit
                 {
@@ -5250,7 +5408,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(0x0100 * registerB + registerC);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.SUB);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.SBC);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -5259,7 +5417,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(0x0100 * registerD + registerE);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.SUB);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.SBC);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -5268,7 +5426,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(0x0100 * registerH + registerL);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.SUB);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.SBC);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -5277,7 +5435,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(registerSP);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.SUB);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.SBC);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -5286,7 +5444,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(0x0100 * registerB + registerC);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.ADC);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -5295,7 +5453,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(0x0100 * registerD + registerE);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.ADC);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -5304,7 +5462,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(0x0100 * registerH + registerL);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.ADC);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -5313,7 +5471,7 @@ namespace Z80
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
                     UInt16 value2 = (UInt16)(registerSP);
-                    UInt16 value = Calculate(value1, value2, (UInt16)(flagC ? 1 : 0), OPERATOR.ADD);
+                    UInt16 value = Calculate(value1, value2, OPERATOR.ADC);
                     Get2ByteFromInt(value, out lo, out hi);
                     registerH = (byte)Convert.ToInt32(hi, 16);
                     registerL = (byte)Convert.ToInt32(lo, 16);
@@ -5404,7 +5562,7 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x44)                                                                         // neg
                 {
-                    registerA = Calculate(0, registerA, 0, OPERATOR.SUB);
+                    registerA = Calculate(0, registerA, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0x45)                                                                         // retn
                 {
@@ -5530,7 +5688,7 @@ namespace Z80
                     int value;
                     UInt16 address = (UInt16)(0x0100 * registerH + registerL);
                     val = RAM[address];
-                    Calculate(registerA, val, 0, OPERATOR.SUB);
+                    Calculate(registerA, val, OPERATOR.SUB);
                     value = 0x0100 * registerH + registerL;
                     value += 0x01;
                     Get2ByteFromInt(value, out lo, out hi);
@@ -5548,7 +5706,7 @@ namespace Z80
                     int value;
                     UInt16 address = (UInt16)(0x0100 * registerH + registerL);
                     val = RAM[address];
-                    Calculate(registerA, val, 0, OPERATOR.SUB);
+                    Calculate(registerA, val, OPERATOR.SUB);
                     value = 0x0100 * registerH + registerL;
                     value += 0x01;
                     Get2ByteFromInt(value, out lo, out hi);
@@ -5702,7 +5860,7 @@ namespace Z80
                     int value;
                     UInt16 address = (UInt16)(0x0100 * registerH + registerL);
                     val = RAM[address];
-                    Calculate(registerA, val, 0, OPERATOR.SUB);
+                    Calculate(registerA, val, OPERATOR.SUB);
                     value = 0x0100 * registerH + registerL;
                     value -= 0x01;
                     Get2ByteFromInt(value, out lo, out hi);
@@ -5720,7 +5878,7 @@ namespace Z80
                     int value;
                     UInt16 address = (UInt16)(0x0100 * registerH + registerL);
                     val = RAM[address];
-                    Calculate(registerA, val, 0, OPERATOR.SUB);
+                    Calculate(registerA, val, OPERATOR.SUB);
                     value = 0x0100 * registerH + registerL;
                     value -= 0x01;
                     Get2ByteFromInt(value, out lo, out hi);

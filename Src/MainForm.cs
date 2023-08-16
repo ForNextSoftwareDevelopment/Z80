@@ -56,7 +56,19 @@ namespace Z80
         private FormMPF1 formMPF1 = null;
 
         // Indicate number of activations of soundbit
-        private int soundActiveCounter = 10000; 
+        private int soundActiveCounter = 10000;
+
+        // Macro definitions found
+        private Dictionary<string, MACRO> macros;
+
+        // Macro structure
+        private struct MACRO
+        {
+            public string name;
+            public List<string> args;
+            public List<string> locals;
+            public List<string> lines;
+        }
 
         #endregion
 
@@ -889,6 +901,8 @@ namespace Z80
 
         private void startDebug_Click(object sender, EventArgs e)
         {
+            string message;
+
             nextInstrAddress = 0;
 
             assemblerZ80 = new AssemblerZ80(richTextBoxProgram.Lines);
@@ -902,8 +916,27 @@ namespace Z80
 
             try
             {
+                // Replace all macros with regular code
+                message = ProcessMacros(richTextBoxProgram);
+                if (message != "OK")
+                {
+                    MessageBox.Show(this, message, "PROCESS MACROS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                    // Check if a linenumber has been given
+                    string[] fields = message.Split(' ');
+                    bool result = Int32.TryParse(fields[fields.Length - 1], out int line);
+                    if (result)
+                    {
+                        // Show where the error is (remember the linenumber returned starts with 1 in stead of 0)
+                        ChangeColorRTBLine(line - 1, true);
+                    }
+
+                    Cursor.Current = Cursors.Arrow;
+                    return;
+                }
+
                 // Run the first Pass of assembler
-                string message = assemblerZ80.FirstPass();
+                message = assemblerZ80.FirstPass();
                 if (message != "OK")
                 {
                     MessageBox.Show(this, message, "FIRSTPASS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1722,6 +1755,280 @@ namespace Z80
         #endregion
 
         #region Methods
+
+        /// <summary>
+        /// Replace macros with regular code
+        /// </summary>
+        /// <returns></returns>
+        public string ProcessMacros(RichTextBox richTextBox)
+        {
+            // Set debug mode to false;
+            bool DEBUG = false;
+
+            // Index for new labels from macros to be added at the name
+            int indexNewLabel = 0;
+
+            // New dictionary of macros
+            macros = new Dictionary<string, MACRO>();
+
+            // Copy program text
+            string[] program = richTextBox.Lines;
+            List<string> programProcessed = new List<string>();
+
+            // Process all lines
+            for (int lineNumber = 0; lineNumber < program.Length; lineNumber++)
+            {
+                try
+                {
+                    // Copy line of code to process
+                    string line = program[lineNumber];
+
+                    // Remove leading or trailing spaces
+                    line = line.Trim();
+                    if (line == "")
+                    {
+                        // Copy empty lines to processed program
+                        programProcessed.Add(program[lineNumber]);
+                        continue;
+                    }
+
+                    // if a comment is found, remove
+                    int start_of_comment_pos = line.IndexOf(';');
+                    if (start_of_comment_pos != -1)
+                    {
+                        // Check if really a comment (; could be in a string or char array)
+                        int num_quotes = 0;
+                        for (int i = 0; i < start_of_comment_pos; i++)
+                        {
+                            if ((line[i] == '\'') || (line[i] == '\"')) num_quotes++;
+                        }
+
+                        if ((num_quotes % 2) == 0)
+                        {
+                            line = line.Remove(line.IndexOf(';')).Trim();
+                            if (line == "")
+                            {
+                                // Copy comment only lines to processed program
+                                programProcessed.Add(program[lineNumber]);
+                                continue;
+                            }
+                        }
+                    }
+
+                    // Check if the line starts with an debug define statement
+                    if (line.ToLower().StartsWith("debug"))
+                    {
+                        // If next char is not a colon (for a label) this is a debug define statement
+                        if ((line.Length > 5) && (line.Substring(5, 1) != ":"))
+                        {
+                            string arg = line.Substring(5);
+                            if (arg.ToLower().Contains("true")) DEBUG = true;
+                            if (arg.ToLower().Contains("1")) DEBUG = true;
+
+                            // Skip line
+                            if (lineNumber < program.Length)
+                            {
+                                lineNumber++;
+                                line = program[lineNumber].Trim().ToLower();
+                            }
+                        }
+                    }
+
+                    // Check if the line starts with an debug statement
+                    if (line.Trim().ToLower().StartsWith("#debug"))
+                    {
+                        if (DEBUG)
+                        {
+                            if (lineNumber < program.Length) lineNumber++;
+                            line = program[lineNumber].Trim().ToLower();
+
+                            // Copy lines until the #ENDDEBUG statement line
+                            while ((lineNumber < program.Length) && (!line.StartsWith("#enddebug")))
+                            {
+                                programProcessed.Add(program[lineNumber]);
+                                lineNumber++;
+                                if (lineNumber < program.Length)
+                                {
+                                    line = program[lineNumber].Trim().ToLower();
+                                }
+                            }
+
+                            // Skip #ENDDEBUG line
+                            if (lineNumber < program.Length)
+                            {
+                                lineNumber++;
+                                line = program[lineNumber].Trim().ToLower();
+                            }
+                        } else
+                        {
+                            // Skip lines until the #ENDDEBUG statement line
+                            while ((lineNumber < program.Length) && (!line.StartsWith("#enddebug")))
+                            {
+                                lineNumber++;
+                                if (lineNumber < program.Length)
+                                {
+                                    line = program[lineNumber].Trim().ToLower();
+                                }
+                            }
+
+                            // Skip #ENDDEBUG line
+                            if (lineNumber < program.Length)
+                            {
+                                lineNumber++;
+                                line = program[lineNumber].Trim().ToLower();
+                            }
+                        }
+                    }
+
+                    // Check if the line starts with a known macro name
+                    bool foundMacro = false;
+                    foreach (KeyValuePair<string, MACRO> keyValuePair in macros)
+                    {
+                        if (line.StartsWith(keyValuePair.Key))
+                        {
+                            // Found macro
+                            foundMacro = true;
+                            MACRO macro = macros[keyValuePair.Key];
+
+                            string newCode = "";
+                            foreach (string ml in macro.lines)
+                            {
+                                string l = ml;
+                                foreach (string local in macro.locals)
+                                {
+                                    if (l.Contains(local + ":"))
+                                    {
+                                        string fill = "";
+                                        for (int i = 0; i < (7 - local.Length); i++) fill += " ";
+                                        l = l.Replace(local + ":", local + indexNewLabel.ToString("D4") + ":\r\n" + fill);
+                                        indexNewLabel++;
+                                    }
+                                }
+
+                                newCode += l + "\r\n";
+                            }
+
+                            // Get arguments
+                            List<string> args = new List<string>();
+                            line = line.Replace(keyValuePair.Key, "").Trim();
+                            for (int i = 0; i < line.Length; i++)
+                            {
+                                bool inStr = false;
+                                string arg = "";
+                                while ((i < line.Length) && (inStr || (!inStr && (line[i] != ','))))
+                                {
+                                    arg += line[i];
+                                    if ((line[i] == '\'') || (line[i] == '\"')) inStr = !inStr;
+                                    i++;
+                                }
+
+                                args.Add(arg);
+                            }
+
+                            if (args.Count != macro.args.Count)
+                            {
+                                return ("Invalid number of arguments for macro '" + keyValuePair.Value + "' at line " + (lineNumber + 1).ToString());
+                            }
+
+                            // Replace arguments in new code
+                            int index = 0;
+                            foreach (string arg in macro.args)
+                            {
+                                newCode = newCode.Replace(arg.Trim(), args[index].Trim());
+                                index++;
+                            }
+
+                            programProcessed.Add(newCode);
+                        }
+                    }
+
+                    // If found process next line
+                    if (foundMacro) continue;
+
+                    // Check if there is a label with the 'macro' statement after it (no quotes allowed in line)
+                    if ((line.IndexOf(':') != -1) && !line.Contains("\'") && !line.Contains("\""))
+                    {
+                        int end_of_label_pos = line.IndexOf(':');
+                        int start_of_macro_pos = line.ToLower().IndexOf("macro", end_of_label_pos);
+                        if (start_of_macro_pos != -1)
+                        {
+                            // Macro statement found, so process
+                            MACRO macro = new MACRO();
+
+                            // Name
+                            macro.name = line.Substring(0, end_of_label_pos);
+
+                            // Args
+                            List<string> listArgs = new List<string>();
+                            string[] args = line.Substring(start_of_macro_pos + 5).Split(',');
+                            foreach (string arg in args)
+                            {
+                                listArgs.Add(arg.Trim());
+                            }
+                            macro.args = listArgs;
+
+                            // Locals
+                            lineNumber++;
+                            line = program[lineNumber];
+
+                            List<string> listLocals = new List<string>();
+
+                            while (line.ToLower().Trim().StartsWith("local"))
+                            {
+                                string local = line.Trim().ToLower().Substring(5);
+                                listLocals.Add(local.Trim());
+
+                                lineNumber++;
+                                line = program[lineNumber];
+                            }
+                            macro.locals = listLocals;
+
+                            // Lines
+                            List<string> listLines = new List<string>();
+                            do
+                            {
+                                line = program[lineNumber];
+                                if (!line.ToLower().Contains("endm")) listLines.Add(line);
+                                lineNumber++;
+                            } while (!line.ToLower().Contains("endm"));
+
+                            macro.lines = listLines;
+
+                            // Add to dictionary
+                            if (!macros.ContainsKey(macro.name))
+                            {
+                                macros.Add(macro.name, macro);
+                            } else
+                            {
+                                return ("Macro with same same as previous one found at line " + (lineNumber + 1));
+                            }
+                        } else
+                        {
+                            // Copy 'non macro lines' to processed program
+                            programProcessed.Add(program[lineNumber]);
+                        }
+                    } else
+                    {
+                        // Copy 'non macro lines' to processed program
+                        programProcessed.Add(program[lineNumber]);
+                    }
+                } catch (Exception exception)
+                {
+                    MessageBox.Show(exception.Message, "ProcessMacros", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return ("EXCEPTION ERROR AT LINE " + (lineNumber + 1));
+                }
+            }
+
+            string programNew = "";
+            for (int i = 0; i < programProcessed.Count; i++)
+            {
+                programNew += programProcessed[i] + "\r\n";
+            }
+
+            richTextBox.Text = programNew;
+
+            return ("OK");
+        }
 
         /// <summary>
         /// Updating the Registers
