@@ -177,7 +177,7 @@ namespace Z80
         private byte Calculate(byte arg1, byte arg2, OPERATOR type)
         {
             int i, count;
-            byte b1, b2;
+            byte b1, b2, b3;
             byte carry = (byte)(flagC ? 1 : 0);
             byte result = (byte)0x00;
 
@@ -305,19 +305,12 @@ namespace Z80
                     // Half Carry flag
                     b1 = (byte)(arg1 & 0x0F);  // Masking upper 4 bits
                     b2 = (byte)(arg2 & 0x0F);  // Masking upper 4 bits
-
-                    if (b1 - b2 < 0x00)
-                    {
-                        flagH = true;
-                    } else
-                    {
-                        flagH = false;
-                    }
+                    flagH = (((b1 - b2) & 0x10) == 0x10);
 
                     // Overflow flag
                     flagPV = false;
-                    if ((arg1 >= 0x80) && (arg2 >= 0x80) && (result < 0x80)) flagPV = true;
-                    if ((arg1 < 0x80) && (arg2 < 0x80) && (result >= 0x80)) flagPV = true;
+                    if ((arg1 >= 0x80) && (arg2 < 0x80) && (result < 0x80)) flagPV = true;
+                    if ((arg1 < 0x80) && (arg2 >= 0x80) && (result >= 0x80)) flagPV = true;
 
                     // Zero flag
                     if (result == 0x00)
@@ -357,19 +350,13 @@ namespace Z80
                     // Half Carry flag
                     b1 = (byte)(arg1 & 0x0F);  // Masking upper 4 bits
                     b2 = (byte)(arg2 & 0x0F);  // Masking upper 4 bits
-
-                    if (b1 - b2 - carry < 0x00)
-                    {
-                        flagH = true;
-                    } else
-                    {
-                        flagH = false;
-                    }
+                    b3 = (byte)(carry & 0x0F);  // Masking upper 4 bits
+                    flagH = (((b1 - b2 - b3) & 0x10) == 0x10);
 
                     // Overflow flag
                     flagPV = false;
-                    if ((arg1 >= 0x80) && (arg2 >= 0x80) && (result < 0x80)) flagPV = true;
-                    if ((arg1 < 0x80) && (arg2 < 0x80) && (result >= 0x80)) flagPV = true;
+                    if ((arg1 >= 0x80) && (arg2 < 0x80) && (result < 0x80)) flagPV = true;
+                    if ((arg1 < 0x80) && (arg2 >= 0x80) && (result >= 0x80)) flagPV = true;
 
                     // Zero flag
                     if (result == 0x00)
@@ -535,7 +522,7 @@ namespace Z80
         /// <param name="type"></param>
         private UInt16 Calculate(UInt16 arg1, UInt16 arg2, OPERATOR type)
         {
-            UInt16 b1, b2;
+            UInt16 b1, b2, b3;
             byte carry = (byte)(flagC ? 1 : 0);
             UInt16 result = (UInt16)0x0000;
 
@@ -640,14 +627,8 @@ namespace Z80
                     // Half Carry flag
                     b1 = (byte)(arg1 & 0xFF);  // Masking upper 8 bits
                     b2 = (byte)(arg2 & 0xFF);  // Masking upper 8 bits
-
-                    if (b1 - b2 - carry < 0x00)
-                    {
-                        flagH = true;
-                    } else
-                    {
-                        flagH = false;
-                    }
+                    b3 = (byte)(carry & 0xFF);  // Masking upper 8 bits
+                    flagH = (((b1 - b2 - b3) & 0x100) == 0x100);
 
                     // Overflow flag
                     flagPV = false;
