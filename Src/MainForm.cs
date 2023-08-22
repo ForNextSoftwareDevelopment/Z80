@@ -70,6 +70,9 @@ namespace Z80
             public List<string> lines;
         }
 
+        // Terminal (debug) interface 
+        private FormTerminal formTerminal = null;
+
         #endregion
 
         #region Constructor
@@ -256,6 +259,7 @@ namespace Z80
             UpdateDisplay();
             UpdateKeyboard();
             UpdatePortPanel();
+            UpdateTerminal();
             UpdateRegisters();
             UpdateFlags();
             UpdateInterrupts();
@@ -281,6 +285,7 @@ namespace Z80
                     }
 
                     UpdatePortPanel();
+                    UpdateTerminal();
                     UpdateRegisters();
                     UpdateFlags();
                     UpdateInterrupts();
@@ -300,6 +305,7 @@ namespace Z80
 
                     UpdateMemoryPanel(nextInstrAddress, nextInstrAddress);
                     UpdatePortPanel();
+                    UpdateTerminal();
                     UpdateRegisters();
                     UpdateFlags();
                     UpdateInterrupts();
@@ -902,21 +908,12 @@ namespace Z80
         private void startDebug_Click(object sender, EventArgs e)
         {
             string message;
-
             nextInstrAddress = 0;
+            if (formTerminal != null) formTerminal.tbTerminal.Text = "";
 
-            assemblerZ80 = new AssemblerZ80(richTextBoxProgram.Lines);
-            assemblerZ80.skipDelay = chkSkipLoops.Checked;
-
-            // Port 0 (keyboard data) is high by default on MPF-1
-            if (chkMPF1.Checked)
-            {
-                assemblerZ80.PORT[0] = 0xFF;
-            }
-
+            // Replace all macros with regular code
             try
             {
-                // Replace all macros with regular code
                 message = ProcessMacros(richTextBoxProgram);
                 if (message != "OK")
                 {
@@ -934,7 +931,23 @@ namespace Z80
                     Cursor.Current = Cursors.Arrow;
                     return;
                 }
+            } catch (Exception exception)
+            {
+                MessageBox.Show(this, exception.Message, "startDebug_Click", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
+            assemblerZ80 = new AssemblerZ80(richTextBoxProgram.Lines);
+            assemblerZ80.skipDelay = chkSkipLoops.Checked;
+
+            // Port 0 (keyboard data) is high by default on MPF-1
+            if (chkMPF1.Checked)
+            {
+                assemblerZ80.PORT[0] = 0xFF;
+            }
+
+            try
+            {
                 // Run the first Pass of assembler
                 message = assemblerZ80.FirstPass();
                 if (message != "OK")
@@ -1071,6 +1084,7 @@ namespace Z80
             UpdateDisplay();
             UpdateKeyboard();
             UpdatePortPanel();
+            UpdateTerminal();
             UpdateRegisters();
             UpdateFlags();
             UpdateInterrupts();
@@ -1134,6 +1148,7 @@ namespace Z80
                 {
                     UpdateDisplay();
                     UpdateKeyboard();
+                    UpdateTerminal();
                     if ((assemblerZ80.RAMprogramLine[nextInstrAddress] == lineBreakPoint) && (lineBreakPoint != -1)) 
                     {
                         toolStripButtonRun.Enabled = true;
@@ -1158,6 +1173,7 @@ namespace Z80
             UpdateDisplay();
             UpdateKeyboard();
             UpdatePortPanel();
+            UpdateTerminal();
             UpdateRegisters();
             UpdateFlags();
             UpdateInterrupts();
@@ -1932,12 +1948,15 @@ namespace Z80
 
                             // Replace arguments in new code
                             int index = 0;
+                            newCode = newCode.ToLower();
+
                             foreach (string arg in macro.args)
                             {
-                                newCode = newCode.Replace(arg.Trim(), args[index].Trim());
+                                newCode = newCode.Replace(arg.ToLower().Trim(), args[index].ToUpper().Trim());
                                 index++;
                             }
 
+                            newCode = newCode.ToLower();
                             programProcessed.Add(newCode);
                         }
                     }
@@ -2519,6 +2538,45 @@ namespace Z80
 
                     formMPF1.keyReset.Pressed = false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Update terminal (if data available)
+        /// </summary>
+        private void UpdateTerminal()
+        {
+            if (assemblerZ80 != null) 
+            {
+                // Update terminal display if signalled from assembler
+                if (assemblerZ80.outTerminal)
+                {
+                    // Setup terminal screen 
+                    if (formTerminal == null)
+                    {
+                        int x = this.Location.X + this.Width;
+                        int y = this.Location.Y;
+
+                        if (x > Screen.PrimaryScreen.WorkingArea.Width)
+                        {
+                            x = this.Width / 2;
+                            y = this.Height / 2;
+                        }
+
+                        formTerminal = new FormTerminal(x, y);
+                        formTerminal.Show();
+                    }
+
+                    formTerminal.tbTerminal.Text += Convert.ToChar(assemblerZ80.PORT[0x80]);
+                    if (formTerminal.tbTerminal.TextLength > 0)
+                    {
+                        formTerminal.tbTerminal.Select(formTerminal.tbTerminal.TextLength, 0);
+                        formTerminal.tbTerminal.SelectionStart = formTerminal.tbTerminal.TextLength;
+                        formTerminal.tbTerminal.ScrollToCaret();
+                    }
+                }
+
+                assemblerZ80.outTerminal = false;
             }
         }
 

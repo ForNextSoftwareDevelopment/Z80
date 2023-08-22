@@ -89,6 +89,12 @@
     <Compile Include="FormMPF1.Designer.cs">
       <DependentUpon>FormMPF1.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormTerminal.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormTerminal.designer.cs">
+      <DependentUpon>FormTerminal.cs</DependentUpon>
+    </Compile>
     <Compile Include="Instructions.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
@@ -115,6 +121,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="FormMPF1.resx">
       <DependentUpon>FormMPF1.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormTerminal.resx">
+      <DependentUpon>FormTerminal.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
