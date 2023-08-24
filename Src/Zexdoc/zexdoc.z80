@@ -27,9 +27,6 @@
 msbt:   ds      14
 spbt:   ds      2
 
-debug:       db      0        ; Debug mode, change to 1 to view the instruction/state before and after an instruction 
-startentry:  db      0        ; Starting point of the tests
-
 ; For the purposes of this test program, the machine state consists of:
 ;       a 2 byte memory operand, followed by
 ;       the registers iy,ix,hl,de,bc,af,sp
@@ -1527,6 +1524,9 @@ crctab: db      000h,000h,000h,000h
         db      0c3h,00ch,08eh,0a1h
         db      05ah,005h,0dfh,01bh
         db      02dh,002h,0efh,08dh
+
+debug:       db      0        ; Debug mode, change to 1 to view the instruction/state before and after an instruction 
+startentry:  db      0        ; Starting point of the tests
 
 stack   equ     $+32
 
