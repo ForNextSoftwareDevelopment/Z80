@@ -2995,7 +2995,9 @@ namespace Z80
                     }
                 } else if (byteInstruction == 0x3F)                                                                         // ccf
                 {
+                    flagH = flagC;
                     flagC = !flagC;
+                    flagN = false;
                     registerPC++;
                 } else if (byteInstruction == 0xFE)                                                                         // cp n  
                 {
@@ -3020,30 +3022,70 @@ namespace Z80
                 {
                     byte low = (byte)(registerA & 0x0F);
                     byte high = (byte)(registerA & 0xF0);
+                    bool flagCold = flagC;
+                    bool flagHold = flagH;
+                    bool flagNold = flagN;
+                    bool flagCnew = false;
 
-                    if (flagN == false)
+                    if (flagNold == false)
                     {
-                        if ((low > 0x09) || flagH)
+                        if ((low > 0x09) || flagHold)
                         {
                             registerA = Calculate(registerA, 0x06, OPERATOR.ADD);
                         }
 
-                        if ((high > 0x90) || flagC)
+                        if ((high > 0x90) || flagCold)
                         {
                             registerA = Calculate(registerA, 0x60, OPERATOR.ADD);
+                            flagCnew = true;
                         }
                     } else
                     {
-                        if ((low > 0x09) || flagH)
+                        if ((low > 0x09) || flagHold)
                         {
                             registerA = Calculate(registerA, 0xFA, OPERATOR.ADD);
                         }
 
-                        if ((high > 0x90) || flagC)
+                        if ((high > 0x90) || flagCold)
                         {
                             registerA = Calculate(registerA, 0xA0, OPERATOR.ADD);
+                            flagCnew = true;
                         }
                     }
+
+                    flagS = (registerA >= 0x80) ? true : false;
+                    flagC = flagCnew;
+
+                    if (flagNold && !flagHold)
+                    {
+                        flagH = false;
+                    } else
+                    {
+                        if (flagNold && flagHold)
+                        {
+                            if (low < 6) flagH = true;
+                        } else
+                        {
+                            if (low >= 0x0A) flagH = true;
+                        }
+                    }
+
+                    string strResultAND = Convert.ToString(Convert.ToInt32(registerA.ToString("X2"), 16), 2).PadLeft(8, '0');
+                    int count = 0;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        if (strResultAND[i] == '1') count++;
+                    }
+
+                    if (count % 2 == 0)
+                    {
+                        flagPV = true;
+                    } else
+                    {
+                        flagPV = false;
+                    }
+
+                    flagN = flagNold;
                     registerPC++;
                 } else if (byteInstruction == 0x3D)                                                                         // dec a
                 {
@@ -4061,7 +4103,9 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x37)                                                                         // scf
                 {
+                    flagH = false;
                     flagC = true;
+                    flagN = false;
                     registerPC++;
                 } else if ((byteInstruction >= 0x90) && (byteInstruction <= 0x97))                                          // sub r
                 {
