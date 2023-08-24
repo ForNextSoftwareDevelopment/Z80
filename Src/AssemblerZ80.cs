@@ -1069,6 +1069,49 @@ namespace Z80
             return true;
         }
 
+        /// <summary>
+        /// Get the current content of a register (IX/IY instructions)
+        /// </summary>
+        /// <param name="register"></param>
+        /// <param name="offset"></param>
+        /// <param name="arg"></param>
+        /// <param name="val"></param>
+        /// <returns></returns>
+        private bool GetRegisterValue(ref UInt16 register, byte offset, byte arg, ref byte val)
+        {
+            switch (arg & 0b00001111)
+            {
+                case 0b0000:
+                    val = registerB;
+                    break;
+                case 0b0001:
+                    val = registerC;
+                    break;
+                case 0b0010:
+                    val = registerD;
+                    break;
+                case 0b0011:
+                    val = registerE;
+                    break;
+                case 0b0100:
+                    val = (byte)(register >> 8);
+                    break;
+                case 0b0101:
+                    val = (byte)(register & 0xFF);
+                    break;
+                case 0b0110:
+                    val = RAM[register + offset];
+                    break;
+                case 0b0111:
+                    val = registerA;
+                    break;
+                default:
+                    return false;
+            }
+
+            return true;
+        }
+
         #endregion
 
         #region Methods (Div)
@@ -2970,27 +3013,37 @@ namespace Z80
                 } else if (byteInstruction == 0x2F)                                                                         // cpl
                 {
                     registerA = (byte)(0xFF - registerA);
+                    flagN = true;
+                    flagH = true;
                     registerPC++;
                 } else if (byteInstruction == 0x27)                                                                         // daa 
                 {
                     byte low = (byte)(registerA & 0x0F);
                     byte high = (byte)(registerA & 0xF0);
-                    if ((low > 0x09) || flagH)
+
+                    if (flagN == false)
                     {
-                        low += 0x06;
-                        if (low > 0x0F)
+                        if ((low > 0x09) || flagH)
                         {
-                            if (high == 0xF0) flagC = true;
-                            high += 0x10;
-                            low = (byte)(low & 0x0F);
+                            registerA = Calculate(registerA, 0x06, OPERATOR.ADD);
+                        }
+
+                        if ((high > 0x90) || flagC)
+                        {
+                            registerA = Calculate(registerA, 0x60, OPERATOR.ADD);
+                        }
+                    } else
+                    {
+                        if ((low > 0x09) || flagH)
+                        {
+                            registerA = Calculate(registerA, 0xFA, OPERATOR.ADD);
+                        }
+
+                        if ((high > 0x90) || flagC)
+                        {
+                            registerA = Calculate(registerA, 0xA0, OPERATOR.ADD);
                         }
                     }
-                    if ((high > 0x90) || flagC)
-                    {
-                        flagC = true;
-                        high += 0x60;
-                    }
-                    registerA = (byte)(high + low);
                     registerPC++;
                 } else if (byteInstruction == 0x3D)                                                                         // dec a
                 {
@@ -3697,12 +3750,12 @@ namespace Z80
                     registerSP++;
                     b = (byte)(flags & 0x01);
                     if (b != 0) flagC = true; else flagC = false;
+                    b = (byte)(flags & 0x02);
+                    if (b != 0) flagN = true; else flagN = false;
                     b = (byte)(flags & 0x04);
                     if (b != 0) flagPV = true; else flagPV = false;
                     b = (byte)(flags & 0x10);
                     if (b != 0) flagH = true; else flagH = false;
-                    b = (byte)(flags & 0x20);
-                    if (b != 0) flagN = true; else flagN = false;
                     b = (byte)(flags & 0x40);
                     if (b != 0) flagZ = true; else flagZ = false;
                     b = (byte)(flags & 0x80);
@@ -3886,61 +3939,41 @@ namespace Z80
                     }
                 } else if (byteInstruction == 0x17)                                                                         // rla 
                 {
-                    byte prevA;
                     byte ac = registerA;
-                    byte saveC;
-                    if (flagC)
-                    {
-                        saveC = 1;
-                    } else
-                    {
-                        saveC = 0;
-                    }
-                    prevA = ac;
-                    ac *= 2;
-                    if (ac < prevA)
-                    {
-                        flagC = true;
-                    } else
-                    {
-                        flagC = false;
-                    }
-                    ac += saveC;
+                    bool saveC = flagC;
+                    flagC = (registerA & 0x80) != 0 ? true : false;
+                    ac = (byte)(ac << 1);
+                    if (saveC) ac = (byte)(ac | 0x01);
                     registerA = ac;
+                    flagN = false;
+                    flagH = false;
                     registerPC++;
                 } else if (byteInstruction == 0x07)                                                                         // rlca
                 {
                     flagC = (registerA & 0x80) != 0 ? true : false;
                     registerA = (byte)(registerA << 1);
                     if (flagC) registerA = (byte)(registerA | 0x01);
+                    flagN = false;
+                    flagH = false;
                     registerPC++;
                 } else if (byteInstruction == 0x1F)                                                                         // rra   
                 {
                     byte ac = registerA;
-                    byte saveC;
-                    if (flagC)
-                    {
-                        saveC = 1;
-                    } else
-                    {
-                        saveC = 0;
-                    }
-                    if ((ac & 0x01) == 0x01)
-                    {
-                        flagC = true;
-                    } else
-                    {
-                        flagC = false;
-                    }
-                    ac /= 2;
-                    ac += (byte)(saveC * 0x80);
+                    bool saveC = flagC;
+                    flagC = (registerA & 0x01) != 0 ? true : false;
+                    ac = (byte)(ac >> 1);
+                    if (saveC) ac = (byte)(ac | 0x80);
                     registerA = ac;
+                    flagN = false;
+                    flagH = false;
                     registerPC++;
                 } else if (byteInstruction == 0x0F)                                                                         // rrca
                 {
                     flagC = (registerA & 0x01) != 0 ? true : false;
                     registerA = (byte)(registerA >> 1);
                     if (flagC) registerA = (byte)(registerA | 0x80);
+                    flagN = false;
+                    flagH = false;
                     registerPC++;
                 } else if (byteInstruction == 0xC7)                                                                         // rst 00h
                 {
@@ -4057,12 +4090,12 @@ namespace Z80
                 } else if (byteInstruction == 0xDD)                                                                         // to IX
                 {
                     registerPC++;
-                    string message = RunInstructionIX();
+                    string message = RunInstructionIXIY(ref registerIX);
                     if (message != "") return (message);
                 } else if (byteInstruction == 0xFD)                                                                         // to IY
                 {
                     registerPC++;
-                    string message = RunInstructionIY();
+                    string message = RunInstructionIXIY(ref registerIY);
                     if (message != "") return (message);
                 } else if (byteInstruction == 0xED)                                                                         // to Misc
                 {
@@ -4089,13 +4122,13 @@ namespace Z80
 
         #endregion
 
-        #region Methods (RunInstructionIX)
+        #region Methods (RunInstruction IX/IY)
 
         /// <summary>
-        /// Run IX instruction (at programcounter)
+        /// Run IX/IY instruction (at programcounter)
         /// </summary>
         /// <returns></returns>
-        public string RunInstructionIX()
+        public string RunInstructionIXIY(ref UInt16 registerIndex)
         {
             int num;
             bool result;
@@ -4105,134 +4138,103 @@ namespace Z80
 
             try
             {
-                if (byteInstruction == 0x8C)                                                                                // adc a,ixh
+                if ((byteInstruction >= 0x88) && (byteInstruction <= 0x8F))                                                 // adc a,r
                 {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.ADC);
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x8E)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x88;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)num, ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerA = Calculate(registerA, (byte)(val), OPERATOR.ADC);
                     registerPC++;
-                } else if (byteInstruction == 0x8D)                                                                         // adc a,ixl
+                } else if ((byteInstruction >= 0x80) && (byteInstruction <= 0x87))                                          // add a,r
                 {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, OPERATOR.ADC);
-                    registerPC++;
-                } else if (byteInstruction == 0x8E)                                                                         // adc a,(ix+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.ADC);
-                    registerPC++;
-                } else if (byteInstruction == 0x84)                                                                         // add a,ixh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0x85)                                                                         // add a,ixl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0x86)                                                                         // add a,(ix+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.ADD);
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x86)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x80;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)num, ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerA = Calculate(registerA, val, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x09)                                                                         // add ix,bc 
                 {
-                    UInt16 value1 = registerIX;
+                    UInt16 value1 = registerIndex;
                     UInt16 value2 = (UInt16)(0x0100 * registerB + registerC);
-                    registerIX = Calculate(value1, value2, OPERATOR.ADD);
+                    registerIndex = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x19)                                                                         // add ix,de 
                 {
-                    UInt16 value1 = registerIX;
+                    UInt16 value1 = registerIndex;
                     UInt16 value2 = (UInt16)(0x0100 * registerD + registerE);
-                    registerIX = Calculate(value1, value2, OPERATOR.ADD);
+                    registerIndex = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x29)                                                                         // add ix,ix 
                 {
-                    UInt16 value1 = registerIX;
-                    UInt16 value2 = registerIX;
-                    registerIX = Calculate(value1, value2, OPERATOR.ADD);
+                    UInt16 value1 = registerIndex;
+                    UInt16 value2 = registerIndex;
+                    registerIndex = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
                 } else if (byteInstruction == 0x39)                                                                         // add ix,sp 
                 {
-                    UInt16 value1 = registerIX;
+                    UInt16 value1 = registerIndex;
                     UInt16 value2 = registerSP;
-                    registerIX = Calculate(value1, value2, OPERATOR.ADD);
+                    registerIndex = Calculate(value1, value2, OPERATOR.ADD);
                     registerPC++;
-                } else if (byteInstruction == 0xA4)                                                                         // and ixh
+                } else if ((byteInstruction >= 0xA0) && (byteInstruction <= 0xA7))                                          // and r
                 {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.AND);
+                    byte offset = 0x00;
+                    if (byteInstruction == 0xA6)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0xA0;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)num, ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerA = Calculate(registerA, val, OPERATOR.AND);
                     registerPC++;
-                } else if (byteInstruction == 0xA5)                                                                         // and ixl
+                } else if ((byteInstruction >= 0xB8) && (byteInstruction <= 0xBF))                                          // cp r  
                 {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, OPERATOR.AND);
-                    registerPC++;
-                } else if (byteInstruction == 0xA6)                                                                         // and (ix+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.AND);
-                    registerPC++;
-                } else if (byteInstruction == 0xBC)                                                                         // cp ixh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX >> 8);
-                    Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0xBD)                                                                         // cp ixl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX);
-                    Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0xBE)                                                                         // cp (ix+o)  
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    Calculate(value1, value2, OPERATOR.SUB);
+                    byte offset = 0x00;
+                    if (byteInstruction == 0xBE)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0xB8;
+                    byte compareValue = 0x00;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)num, ref compareValue);
+                    if (!result) return ("Can't get the register value");
+                    Calculate(registerA, compareValue, OPERATOR.SUB);
                     registerPC++;
                 } else if (byteInstruction == 0x2B)                                                                         // dec ix
                 {
-                    registerIX--;
+                    registerIndex--;
                     registerPC++;
                 } else if (byteInstruction == 0x25)                                                                         // dec ixh
                 {
                     bool save_flag = flagC;
-                    byte value1 = (byte)(registerIX >> 8);
+                    byte value1 = (byte)(registerIndex >> 8);
                     byte value2 = 1;
                     val = Calculate(value1, value2, OPERATOR.SUB);
-                    registerIX = (UInt16)((registerIX & 0x00FF) + (val << 8));
+                    registerIndex = (UInt16)((registerIndex & 0x00FF) + (val << 8));
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x2D)                                                                         // dec ixl
                 {
                     bool save_flag = flagC;
-                    byte value1 = (byte)(registerIX);
+                    byte value1 = (byte)(registerIndex);
                     byte value2 = 1;
                     val = Calculate(value1, value2, OPERATOR.SUB);
-                    registerIX = (UInt16)((registerIX & 0xFF00) + val);
+                    registerIndex = (UInt16)((registerIndex & 0xFF00) + val);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x35)                                                                         // dec (ix+o)
@@ -4240,7 +4242,7 @@ namespace Z80
                     bool save_flag = flagC;
                     registerPC++;
                     byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
+                    UInt16 address = (UInt16)(registerIndex + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = RAM[address];
                     byte value2 = 1;
                     RAM[address] = Calculate(value1, value2, OPERATOR.SUB);
@@ -4249,33 +4251,33 @@ namespace Z80
                 } else if (byteInstruction == 0xE3)                                                                         // ex (sp),ix
                 {
                     byte b1, b2;
-                    b1 = (byte)registerIX;
-                    b2 = (byte)(registerIX >> 8);
-                    registerIX = RAM[registerSP];
+                    b1 = (byte)registerIndex;
+                    b2 = (byte)(registerIndex >> 8);
+                    registerIndex = RAM[registerSP];
                     RAM[registerSP] = b1;
-                    registerIX += (UInt16)(RAM[registerSP + 1] << 8);
+                    registerIndex += (UInt16)(RAM[registerSP + 1] << 8);
                     RAM[registerSP + 1] = b2;
                     registerPC++;
                 } else if (byteInstruction == 0x23)                                                                         // inc ix
                 {
-                    registerIX++;
+                    registerIndex++;
                     registerPC++;
                 } else if (byteInstruction == 0x24)                                                                         // inc ixh
                 {
                     bool save_flag = flagC;
-                    byte value1 = (byte)(registerIX >> 8);
+                    byte value1 = (byte)(registerIndex >> 8);
                     byte value2 = 1;
                     val = Calculate(value1, value2, OPERATOR.ADD);
-                    registerIX = (UInt16)((registerIX & 0x00FF) + (val << 8));
+                    registerIndex = (UInt16)((registerIndex & 0x00FF) + (val << 8));
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x2C)                                                                         // inc ixl
                 {
                     bool save_flag = flagC;
-                    byte value1 = (byte)(registerIX);
+                    byte value1 = (byte)(registerIndex);
                     byte value2 = 1;
                     val = Calculate(value1, value2, OPERATOR.ADD);
-                    registerIX = (UInt16)((registerIX & 0xFF00) + val);
+                    registerIndex = (UInt16)((registerIndex & 0xFF00) + val);
                     flagC = save_flag;
                     registerPC++;
                 } else if (byteInstruction == 0x34)                                                                         // inc (ix+o)
@@ -4283,7 +4285,7 @@ namespace Z80
                     bool save_flag = flagC;
                     registerPC++;
                     byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
+                    UInt16 address = (UInt16)(registerIndex + (offset < 0x80 ? offset : offset - 0x100));
                     byte value1 = RAM[address];
                     byte value2 = 1;
                     RAM[address] = Calculate(value1, value2, OPERATOR.ADD);
@@ -4291,7 +4293,78 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0xE9)                                                                         // jp (ix)
                 {
-                    registerPC = registerIX;
+                    registerPC = registerIndex;
+                } else if ((byteInstruction >= 0x78) && (byteInstruction <= 0x7F))                                          // ld a,r
+                {
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x7E)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x78;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerA = val;
+                    registerPC++;
+                } else if ((byteInstruction >= 0x40) && (byteInstruction <= 0x47))                                          // ld b,r
+                {
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x46)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x40;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerB = val;
+                    registerPC++;
+                } else if ((byteInstruction >= 0x48) && (byteInstruction <= 0x4F))                                          // ld c,r
+                {
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x4E)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x48;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerC = val;
+                    registerPC++;
+                } else if ((byteInstruction >= 0x50) && (byteInstruction <= 0x57))                                          // ld d,r
+                {
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x56)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x50;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerD = val;
+                    registerPC++;
+                } else if ((byteInstruction >= 0x58) && (byteInstruction <= 0x5F))                                          // ld e,r
+                {
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x5E)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x58;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerE = val;
+                    registerPC++;
+                } else if (byteInstruction == 0x66)                                                                         // ld h,(ix+o)
+                {
+                    registerPC++;
+                    byte offset = RAM[registerPC];
+                    registerH = RAM[registerIndex + offset];
+                    registerPC++;
                 } else if (byteInstruction == 0x21)                                                                         // ld ix,nn
                 {
                     byte b1, b2;
@@ -4300,7 +4373,7 @@ namespace Z80
                     registerPC++;
                     b2 = RAM[registerPC];
                     registerPC++;
-                    registerIX = (UInt16)(b1 + (0x0100 * b2));
+                    registerIndex = (UInt16)(b1 + (0x0100 * b2));
                 } else if (byteInstruction == 0x2A)                                                                         // ld ix,(nn)
                 {
                     UInt16 address = 0;
@@ -4313,24 +4386,56 @@ namespace Z80
                     b1 = RAM[address];
                     address++;
                     b2 = RAM[address];
-                    registerIX = (UInt16)(b1 + (0x0100 * b2));
+                    registerIndex = (UInt16)(b1 + (0x0100 * b2));
                 } else if (byteInstruction == 0x26)                                                                         // ld ixh,n
                 {
                     registerPC++;
                     byte n = RAM[registerPC];
-                    registerIX = (UInt16)((registerIX & 0x00FF) + (n * 0x100));
+                    registerIndex = (UInt16)((registerIndex & 0x00FF) + (n * 0x100));
                     registerPC++;
                 } else if (byteInstruction == 0x2E)                                                                         // ld ixl,n
                 {
                     registerPC++;
                     byte n = RAM[registerPC];
-                    registerIX = (UInt16)((registerIX & 0xFF00) + n);
+                    registerIndex = (UInt16)((registerIndex & 0xFF00) + n);
+                    registerPC++;
+                } else if ((byteInstruction == 0x60) ||                                                                     // ld ixh,r
+                           (byteInstruction == 0x61) ||
+                           (byteInstruction == 0x62) ||
+                           (byteInstruction == 0x63) ||
+                           (byteInstruction == 0x64) ||
+                           (byteInstruction == 0x65) ||
+                           (byteInstruction == 0x67))
+                {
+                    num = byteInstruction - 0x60;
+                    result = GetRegisterValue(ref registerIndex, 0x00, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerIndex = (UInt16)((registerIndex & 0x00FF) | (val << 8));
+                    registerPC++;
+                } else if ((byteInstruction == 0x68) ||                                                                     // ld ixl,r
+                           (byteInstruction == 0x69) ||
+                           (byteInstruction == 0x6A) ||
+                           (byteInstruction == 0x6B) ||
+                           (byteInstruction == 0x6C) ||
+                           (byteInstruction == 0x6D) ||
+                           (byteInstruction == 0x6F))
+                {
+                    num = byteInstruction - 0x68;
+                    result = GetRegisterValue(ref registerIndex, 0x00, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerIndex = (UInt16)((registerIndex & 0xFF00) | val);
+                    registerPC++;
+                } else if (byteInstruction == 0x6E)                                                                         // ld l,(ix+o)
+                {
+                    registerPC++;
+                    byte offset = RAM[registerPC];
+                    registerL = RAM[registerIndex + offset];
                     registerPC++;
                 } else if (byteInstruction == 0x36)                                                                         // ld (ix+o),n
                 {
                     registerPC++;
                     byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
+                    UInt16 address = (UInt16)(registerIndex + (offset < 0x80 ? offset : offset - 0x100));
                     registerPC++;
                     RAM[address] = RAM[registerPC];
                     registerPC++;
@@ -4344,7 +4449,7 @@ namespace Z80
                 {
                     registerPC++;
                     byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
+                    UInt16 address = (UInt16)(registerIndex + (offset < 0x80 ? offset : offset - 0x100));
                     num = byteInstruction - 0x40;
                     result = GetRegisterValue((byte)(num & 0x07), ref val);
                     if (!result) return ("Can't get the register value");
@@ -4358,135 +4463,88 @@ namespace Z80
                     registerPC++;
                     address += (UInt16)(0x0100 * RAM[registerPC]);
                     registerPC++;
-                    RAM[address] = (byte)(registerIX);
+                    RAM[address] = (byte)(registerIndex);
                     address++;
-                    RAM[address] = (byte)(registerIX >> 8);
-                } else if ((byteInstruction == 0x46) ||                                                                     // ld r,(ix+o)
-                           (byteInstruction == 0x4E) ||
-                           (byteInstruction == 0x56) ||
-                           (byteInstruction == 0x5E) ||
-                           (byteInstruction == 0x66) ||
-                           (byteInstruction == 0x6E) ||
-                           (byteInstruction == 0x7E))
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    val = RAM[address];
-                    num = byteInstruction - 0x40;
-                    result = SetRegisterValue((byte)((num >> 3) & 0x07), val);
-                    if (!result) return ("Can't set the register value");
-                    registerPC++;
+                    RAM[address] = (byte)(registerIndex >> 8);
                 } else if (byteInstruction == 0xF9)                                                                         // ld sp,ix
                 {
-                    registerSP = registerIX;
+                    registerSP = registerIndex;
                     registerPC++;
-                } else if (byteInstruction == 0xB4)                                                                         // or ixh
+                } else if ((byteInstruction >= 0xB0) && (byteInstruction <= 0xB7))                                          // or r
                 {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.OR);
-                    registerPC++;
-                } else if (byteInstruction == 0xB5)                                                                         // or ixl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, OPERATOR.OR);
-                    registerPC++;
-                } else if (byteInstruction == 0xB6)                                                                         // or (ix+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.OR);
+                    byte offset = 0x00;
+                    if (byteInstruction == 0xB6)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0xB0;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerA = Calculate(registerA, val, OPERATOR.OR);
                     registerPC++;
                 } else if (byteInstruction == 0xE1)                                                                         // pop ix
                 {
-                    registerIX = RAM[registerSP]; 
+                    registerIndex = RAM[registerSP];
                     registerSP++;
-                    registerIX += (UInt16)(0x0100 * RAM[registerSP]);
+                    registerIndex += (UInt16)(0x0100 * RAM[registerSP]);
                     registerSP++;
                     registerPC++;
                 } else if (byteInstruction == 0xE5)                                                                         // push ix
                 {
                     registerSP--;
-                    RAM[registerSP] = (byte)(registerIX >> 8);
+                    RAM[registerSP] = (byte)(registerIndex >> 8);
                     registerSP--;
-                    RAM[registerSP] = (byte)(registerIX & 0x00FF);
+                    RAM[registerSP] = (byte)(registerIndex & 0x00FF);
                     registerPC++;
-                } else if (byteInstruction == 0x9C)                                                                         // sbc ixh
+                } else if ((byteInstruction >= 0x98) && (byteInstruction <= 0x9F))                                          // sbc a,r
                 {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.SBC);
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x9E)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x98;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerA = Calculate(registerA, (byte)(val), OPERATOR.SBC);
                     registerPC++;
-                } else if (byteInstruction == 0x9D)                                                                         // sbc ixl
+                } else if ((byteInstruction >= 0x90) && (byteInstruction <= 0x97))                                          // sub r
                 {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, OPERATOR.SBC);
+                    byte offset = 0x00;
+                    if (byteInstruction == 0x96)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0x90;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerA = Calculate(registerA, val, OPERATOR.SUB);
                     registerPC++;
-                } else if (byteInstruction == 0x9E)                                                                         // sbc a,(ix+o)
+                } else if ((byteInstruction >= 0xA8) && (byteInstruction <= 0xAF))                                          // xor r
                 {
+                    byte offset = 0x00;
+                    if (byteInstruction == 0xAE)
+                    {
+                        registerPC++;
+                        offset = RAM[registerPC];
+                    }
+                    num = byteInstruction - 0xA8;
+                    result = GetRegisterValue(ref registerIndex, offset, (byte)(num & 0x07), ref val);
+                    if (!result) return ("Can't get the register value");
+                    registerA = Calculate(registerA, val, OPERATOR.XOR);
                     registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.SBC);
-                    registerPC++;
-                } else if (byteInstruction == 0x94)                                                                         // sub ixh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0x95)                                                                         // sub ixl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0x96)                                                                         // sub a,(ix+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0xAC)                                                                         // xor ixh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.XOR);
-                    registerPC++;
-                } else if (byteInstruction == 0xAD)                                                                         // xor ixl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIX);
-                    registerA = Calculate(value1, value2, OPERATOR.XOR);
-                    registerPC++;
-                } else if (byteInstruction == 0xAE)                                                                         // xor (ix+o)
+                } else if (byteInstruction == 0xCB)                                                                         // to IX/IY-Bit
                 {
                     registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.XOR);
-                    registerPC++;
-                } else if (byteInstruction == 0xCB)                                                                         // to IXBit
-                {
-                    registerPC++;
-                    string message = RunInstructionIXBit();
+                    string message = RunInstructionIXIYBit(ref registerIndex);
                     if (message != "") return (message);
                 } else
                 {
-                    return ("Unknown IX instruction '" + byteInstruction.ToString("X2") + "'");
+                    if (registerIndex == registerIX) return ("Unknown IX instruction 'DD" + byteInstruction.ToString("X2") + "'");
+                    if (registerIndex == registerIY) return ("Unknown IX instruction 'FD" + byteInstruction.ToString("X2") + "'");
                 }
             } catch (Exception exception)
             {
@@ -4498,24 +4556,25 @@ namespace Z80
 
         #endregion
 
-        #region Methods (RunInstructionIX-Bit)
+        #region Methods (RunInstruction IX/IY Bit)
 
         /// <summary>
-        /// Run IX-Bit instruction (at programcounter)
+        /// Run IX/IY-Bit instruction (at programcounter)
         /// </summary>
         /// <returns></returns>
-        public string RunInstructionIXBit()
+        public string RunInstructionIXIYBit(ref UInt16 registerIndex)
         {
+            int num;
             bool result;
+            byte offset = RAM[registerPC];
+            registerPC++;
             byteInstruction = RAM[registerPC];
+            UInt16 address = (UInt16)(registerIndex + (offset < 0x80 ? offset : offset - 0x100));
 
             try
             {
                 if (byteInstruction == 0x46)                                                                                // bit 0,(ix+o)
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     result = (RAM[address] & 0b00000001) == 0b00000001;
                     if (result) flagZ = false; else flagZ = true;
                     flagH = true;
@@ -4523,9 +4582,6 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x4E)                                                                         // bit 1,(ix+o)
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     result = (RAM[address] & 0b00000010) == 0b00000010;
                     if (result) flagZ = false; else flagZ = true;
                     flagH = true;
@@ -4533,9 +4589,6 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x56)                                                                         // bit 2,(ix+o)
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     result = (RAM[address] & 0b00000100) == 0b00000100;
                     if (result) flagZ = false; else flagZ = true;
                     flagH = true;
@@ -4543,9 +4596,6 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x5E)                                                                         // bit 3,(ix+o)
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     result = (RAM[address] & 0b00001000) == 0b00001000;
                     if (result) flagZ = false; else flagZ = true;
                     flagH = true;
@@ -4553,9 +4603,6 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x66)                                                                         // bit 4,(ix+o)
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     result = (RAM[address] & 0b00010000) == 0b00010000;
                     if (result) flagZ = false; else flagZ = true;
                     flagH = true;
@@ -4563,9 +4610,6 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x6E)                                                                         // bit 5,(ix+o)
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     result = (RAM[address] & 0b00100000) == 0b00100000;
                     if (result) flagZ = false; else flagZ = true;
                     flagH = true;
@@ -4573,9 +4617,6 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x76)                                                                         // bit 6,(ix+o)
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     result = (RAM[address] & 0b01000000) == 0b01000000;
                     if (result) flagZ = false; else flagZ = true;
                     flagH = true;
@@ -4583,869 +4624,423 @@ namespace Z80
                     registerPC++;
                 } else if (byteInstruction == 0x7E)                                                                         // bit 7,(ix+o)
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     result = (RAM[address] & 0b10000000) == 0b10000000;
                     if (result) flagZ = false; else flagZ = true;
                     flagH = true;
                     flagN = false;
                     registerPC++;
-                } else if (byteInstruction == 0x86)                                                                         // res 0,(ix+o)
+                } else if ((byteInstruction == 0x80) ||                                                                     // res 0,(ix+o)
+                           (byteInstruction == 0x81) ||
+                           (byteInstruction == 0x82) ||
+                           (byteInstruction == 0x83) ||
+                           (byteInstruction == 0x84) ||
+                           (byteInstruction == 0x85) ||
+                           (byteInstruction == 0x86) ||
+                           (byteInstruction == 0x87))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] & 0b11111110);
+                    if (byteInstruction != 0x86)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x80) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x8E)                                                                         // res 1,(ix+o)
+                } else if ((byteInstruction == 0x88) ||                                                                     // res 1,(ix+o)
+                           (byteInstruction == 0x89) ||
+                           (byteInstruction == 0x8A) ||
+                           (byteInstruction == 0x8B) ||
+                           (byteInstruction == 0x8C) ||
+                           (byteInstruction == 0x8D) ||
+                           (byteInstruction == 0x8E) ||
+                           (byteInstruction == 0x8F))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] & 0b11111101);
+                    if (byteInstruction != 0x8E)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x88) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x96)                                                                         // res 2,(ix+o)
+                } else if ((byteInstruction == 0x90) ||                                                                     // res 2,(ix+o)
+                           (byteInstruction == 0x91) ||
+                           (byteInstruction == 0x92) ||
+                           (byteInstruction == 0x93) ||
+                           (byteInstruction == 0x94) ||
+                           (byteInstruction == 0x95) ||
+                           (byteInstruction == 0x96) ||
+                           (byteInstruction == 0x97))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] & 0b11111011);
+                    if (byteInstruction != 0x96)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x90) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x9E)                                                                         // res 3,(ix+o)
+                } else if ((byteInstruction == 0x98) ||                                                                     // res 3,(ix+o)
+                           (byteInstruction == 0x99) ||
+                           (byteInstruction == 0x9A) ||
+                           (byteInstruction == 0x9B) ||
+                           (byteInstruction == 0x9C) ||
+                           (byteInstruction == 0x9D) ||
+                           (byteInstruction == 0x9E) ||
+                           (byteInstruction == 0x9F))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] & 0b11110111);
+                    if (byteInstruction != 0x9E)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x98) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xA6)                                                                         // res 4,(ix+o)
+                } else if ((byteInstruction == 0xA0) ||                                                                     // res 4,(ix+o)
+                           (byteInstruction == 0xA1) ||
+                           (byteInstruction == 0xA2) ||
+                           (byteInstruction == 0xA3) ||
+                           (byteInstruction == 0xA4) ||
+                           (byteInstruction == 0xA5) ||
+                           (byteInstruction == 0xA6) ||
+                           (byteInstruction == 0xA7))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] & 0b11101111);
+                    if (byteInstruction != 0xA6)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xA0) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xAE)                                                                         // res 5,(ix+o)
+                } else if ((byteInstruction == 0xA8) ||                                                                     // res 5,(ix+o)
+                           (byteInstruction == 0xA9) ||
+                           (byteInstruction == 0xAA) ||
+                           (byteInstruction == 0xAB) ||
+                           (byteInstruction == 0xAC) ||
+                           (byteInstruction == 0xAD) ||
+                           (byteInstruction == 0xAE) ||
+                           (byteInstruction == 0xAF))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] & 0b11011111);
+                    if (byteInstruction != 0xAE)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xA8) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xB6)                                                                         // res 6,(ix+o)
+                } else if ((byteInstruction == 0xB0) ||                                                                     // res 6,(ix+o)
+                           (byteInstruction == 0xB1) ||
+                           (byteInstruction == 0xB2) ||
+                           (byteInstruction == 0xB3) ||
+                           (byteInstruction == 0xB4) ||
+                           (byteInstruction == 0xB5) ||
+                           (byteInstruction == 0xB6) ||
+                           (byteInstruction == 0xB7))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] & 0b10111111);
+                    if (byteInstruction != 0xB6)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xB0) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xBE)                                                                         // res 7,(ix+o)
+                } else if ((byteInstruction == 0xB8) ||                                                                     // res 7,(ix+o)
+                           (byteInstruction == 0xB9) ||
+                           (byteInstruction == 0xBA) ||
+                           (byteInstruction == 0xBB) ||
+                           (byteInstruction == 0xBC) ||
+                           (byteInstruction == 0xBD) ||
+                           (byteInstruction == 0xBE) ||
+                           (byteInstruction == 0xBF))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] & 0b01111111);
+                    if (byteInstruction != 0xBE)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xB8) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x16)                                                                         // rl (ix+o)
+                } else if ((byteInstruction == 0x10) ||                                                                     // rl (ix+o)
+                           (byteInstruction == 0x11) ||
+                           (byteInstruction == 0x12) ||
+                           (byteInstruction == 0x13) ||
+                           (byteInstruction == 0x14) ||
+                           (byteInstruction == 0x15) ||
+                           (byteInstruction == 0x16) ||
+                           (byteInstruction == 0x17))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = RotateShift(RAM[address], OPERATOR.RL);
+                    if (byteInstruction != 0x16)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x10) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x06)                                                                         // rlc (ix+o)
+                } else if ((byteInstruction == 0x00) ||                                                                     // rlc (ix+o)
+                           (byteInstruction == 0x01) ||
+                           (byteInstruction == 0x02) ||
+                           (byteInstruction == 0x03) ||
+                           (byteInstruction == 0x04) ||
+                           (byteInstruction == 0x05) ||
+                           (byteInstruction == 0x06) ||
+                           (byteInstruction == 0x07))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = RotateShift(RAM[address], OPERATOR.RLC);
+                    if (byteInstruction != 0x06)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)(num & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x1E)                                                                         // rr (ix+o)
+                } else if ((byteInstruction == 0x18) ||                                                                      // rr (ix+o)
+                           (byteInstruction == 0x19) ||
+                           (byteInstruction == 0x1A) ||
+                           (byteInstruction == 0x1B) ||
+                           (byteInstruction == 0x1C) ||
+                           (byteInstruction == 0x1D) ||
+                           (byteInstruction == 0x1E) ||
+                           (byteInstruction == 0x1F))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = RotateShift(RAM[address], OPERATOR.RR);
+                    if (byteInstruction != 0x1E)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x18) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x0E)                                                                         // rrc (ix+o)
+                } else if ((byteInstruction == 0x08) ||                                                                     // rrc (ix+o)
+                           (byteInstruction == 0x09) ||
+                           (byteInstruction == 0x0A) ||
+                           (byteInstruction == 0x0B) ||
+                           (byteInstruction == 0x0C) ||
+                           (byteInstruction == 0x0D) ||
+                           (byteInstruction == 0x0E) ||
+                           (byteInstruction == 0x0F))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = RotateShift(RAM[address], OPERATOR.RRC);
+                    if (byteInstruction != 0x0E)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x08) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x26)                                                                         // sla (ix+o)
+                } else if ((byteInstruction == 0x20) ||                                                                     // sla (ix+o)
+                           (byteInstruction == 0x21) ||
+                           (byteInstruction == 0x22) ||
+                           (byteInstruction == 0x23) ||
+                           (byteInstruction == 0x24) ||
+                           (byteInstruction == 0x25) ||
+                           (byteInstruction == 0x26) ||
+                           (byteInstruction == 0x27))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = RotateShift(RAM[address], OPERATOR.SLA);
+                    if (byteInstruction != 0x26)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x20) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x36)                                                                         // sll (ix+o)
+                } else if ((byteInstruction == 0x30) ||                                                                     // sll (ix+o)
+                           (byteInstruction == 0x31) ||
+                           (byteInstruction == 0x32) ||
+                           (byteInstruction == 0x33) ||
+                           (byteInstruction == 0x34) ||
+                           (byteInstruction == 0x35) ||
+                           (byteInstruction == 0x36) ||
+                           (byteInstruction == 0x37))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = RotateShift(RAM[address], OPERATOR.SLL);
+                    if (byteInstruction != 0x36)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x30) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x2E)                                                                         // sra (ix+o)
+                } else if ((byteInstruction == 0x28) ||                                                                     // sra (ix+o)
+                           (byteInstruction == 0x29) ||
+                           (byteInstruction == 0x2A) ||
+                           (byteInstruction == 0x2B) ||
+                           (byteInstruction == 0x2C) ||
+                           (byteInstruction == 0x2D) ||
+                           (byteInstruction == 0x2E) ||
+                           (byteInstruction == 0x2F))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = RotateShift(RAM[address], OPERATOR.SRA);
+                    if (byteInstruction != 0x2E)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x28) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0x3E)                                                                         // srl (ix+o)
+                } else if ((byteInstruction == 0x38) ||                                                                     // srl (ix+o)
+                           (byteInstruction == 0x39) ||
+                           (byteInstruction == 0x3A) ||
+                           (byteInstruction == 0x3B) ||
+                           (byteInstruction == 0x3C) ||
+                           (byteInstruction == 0x3D) ||
+                           (byteInstruction == 0x3E) ||
+                           (byteInstruction == 0x3F))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = RotateShift(RAM[address], OPERATOR.SRL);
+                    if (byteInstruction != 0x3E)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0x38) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xC6)                                                                         // set 0,(ix+o)
+                } else if ((byteInstruction == 0xC0) ||                                                                     // set 0,(ix+o)
+                           (byteInstruction == 0xC1) ||
+                           (byteInstruction == 0xC2) ||
+                           (byteInstruction == 0xC3) ||
+                           (byteInstruction == 0xC4) ||
+                           (byteInstruction == 0xC5) ||
+                           (byteInstruction == 0xC6) ||
+                           (byteInstruction == 0xC7))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] | 0b00000001);
+                    if (byteInstruction != 0xC6)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xC0) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xCE)                                                                         // set 1,(ix+o)
+                } else if ((byteInstruction == 0xC8) ||                                                                     // set 1,(ix+o)
+                           (byteInstruction == 0xC9) ||
+                           (byteInstruction == 0xCA) ||
+                           (byteInstruction == 0xCB) ||
+                           (byteInstruction == 0xCC) ||
+                           (byteInstruction == 0xCD) ||
+                           (byteInstruction == 0xCE) ||
+                           (byteInstruction == 0xCF))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] | 0b00000010);
+                    if (byteInstruction != 0xCE)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xC8) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xD6)                                                                         // set 2,(ix+o)
+                } else if ((byteInstruction == 0xD0) ||                                                                     // set 2,(ix+o)
+                           (byteInstruction == 0xD1) ||
+                           (byteInstruction == 0xD2) ||
+                           (byteInstruction == 0xD3) ||
+                           (byteInstruction == 0xD4) ||
+                           (byteInstruction == 0xD5) ||
+                           (byteInstruction == 0xD6) ||
+                           (byteInstruction == 0xD7))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] | 0b00000100);
+                    if (byteInstruction != 0xD6)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xD0) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xDE)                                                                         // set 3,(ix+o)
+                } else if ((byteInstruction == 0xD8) ||                                                                     // set 3,(ix+o)
+                           (byteInstruction == 0xD9) ||
+                           (byteInstruction == 0xDA) ||
+                           (byteInstruction == 0xDB) ||
+                           (byteInstruction == 0xDC) ||
+                           (byteInstruction == 0xDD) ||
+                           (byteInstruction == 0xDE) ||
+                           (byteInstruction == 0xDF))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] | 0b00001000);
+                    if (byteInstruction != 0xDE)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xD8) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xE6)                                                                         // set 4,(ix+o)
+                } else if ((byteInstruction == 0xE0) ||                                                                     // set 4,(ix+o)
+                           (byteInstruction == 0xE1) ||
+                           (byteInstruction == 0xE2) ||
+                           (byteInstruction == 0xE3) ||
+                           (byteInstruction == 0xE4) ||
+                           (byteInstruction == 0xE5) ||
+                           (byteInstruction == 0xE6) ||
+                           (byteInstruction == 0xE7))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] | 0b00010000);
+                    if (byteInstruction != 0xE6)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xE0) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xEE)                                                                         // set 5,(ix+o)
+                } else if ((byteInstruction == 0xE8) ||                                                                     // set 5,(ix+o)
+                           (byteInstruction == 0xE9) ||
+                           (byteInstruction == 0xEA) ||
+                           (byteInstruction == 0xEB) ||
+                           (byteInstruction == 0xEC) ||
+                           (byteInstruction == 0xED) ||
+                           (byteInstruction == 0xEE) ||
+                           (byteInstruction == 0xEF))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] | 0b00100000);
+                    if (byteInstruction != 0xEE)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xE8) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xF6)                                                                         // set 6,(ix+o)
+                } else if ((byteInstruction == 0xF0) ||                                                                     // set 6,(ix+o)
+                           (byteInstruction == 0xF1) ||
+                           (byteInstruction == 0xF2) ||
+                           (byteInstruction == 0xF3) ||
+                           (byteInstruction == 0xF4) ||
+                           (byteInstruction == 0xF5) ||
+                           (byteInstruction == 0xF6) ||
+                           (byteInstruction == 0xF7))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] | 0b01000000);
+                    if (byteInstruction != 0xF6)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xF0) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
-                } else if (byteInstruction == 0xFE)                                                                         // set 7,(ix+o)
+                } else if ((byteInstruction == 0xF8) ||                                                                     // set 7,(ix+o)
+                           (byteInstruction == 0xF9) ||
+                           (byteInstruction == 0xFA) ||
+                           (byteInstruction == 0xFB) ||
+                           (byteInstruction == 0xFC) ||
+                           (byteInstruction == 0xFD) ||
+                           (byteInstruction == 0xFE) ||
+                           (byteInstruction == 0xFF))
                 {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIX + (offset < 0x80 ? offset : offset - 0x100));
                     RAM[address] = (byte)(RAM[address] | 0b10000000);
+                    if (byteInstruction != 0xFE)
+                    {
+                        num = byteInstruction;
+                        result = SetRegisterValue((byte)((num - 0xF8) & 0x07), RAM[address]);
+                        if (!result) return ("Can't set the register value");
+                    }
                     registerPC++;
                 } else
                 {
-                    return ("Unknown IX-Bit instruction '" + byteInstruction.ToString("X2") + "'");
-                }
-            } catch (Exception exception)
-            {
-                return ("Exception at memory location: " + registerPC.ToString("X") + ":\r\n" + exception.Message);
-            }
-
-            return "";
-        }
-
-        #endregion
-
-        #region Methods (RunInstructionIY)
-
-        /// <summary>
-        /// Run IY instruction (at programcounter)
-        /// </summary>
-        /// <returns></returns>
-        public string RunInstructionIY()
-        {
-            int num;
-            bool result;
-            byte val = 0x00;
-
-            byteInstruction = RAM[registerPC];
-
-            try
-            {
-                if (byteInstruction == 0x8C)                                                                                // adc a,iyh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.ADC);
-                    registerPC++;
-                } else if (byteInstruction == 0x8D)                                                                         // adc a,iyl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, OPERATOR.ADC);
-                    registerPC++;
-                } else if (byteInstruction == 0x8E)                                                                         // adc a,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.ADC);
-                    registerPC++;
-                } else if (byteInstruction == 0x84)                                                                         // add a,iyh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0x85)                                                                         // add a,iyl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0x86)                                                                         // add a,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0x09)                                                                         // add iy,bc 
-                {
-                    UInt16 value1 = registerIY;
-                    UInt16 value2 = (UInt16)(0x0100 * registerB + registerC);
-                    registerIY = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0x19)                                                                         // add iy,de 
-                {
-                    UInt16 value1 = registerIY;
-                    UInt16 value2 = (UInt16)(0x0100 * registerD + registerE);
-                    registerIY = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0x29)                                                                         // add iy,iy 
-                {
-                    UInt16 value1 = registerIY;
-                    UInt16 value2 = registerIY;
-                    registerIY = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0x39)                                                                         // add iy,sp 
-                {
-                    UInt16 value1 = registerIY;
-                    UInt16 value2 = registerSP;
-                    registerIY = Calculate(value1, value2, OPERATOR.ADD);
-                    registerPC++;
-                } else if (byteInstruction == 0xA4)                                                                         // and iyh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.AND);
-                    registerPC++;
-                } else if (byteInstruction == 0xA5)                                                                         // and iyl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, OPERATOR.AND);
-                    registerPC++;
-                } else if (byteInstruction == 0xA6)                                                                         // and (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.AND);
-                    registerPC++;
-                } else if (byteInstruction == 0xBC)                                                                         // cp iyh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY >> 8);
-                    Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0xBD)                                                                         // cp iyl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY);
-                    Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0xBE)                                                                         // cp (iy+o)  
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0x2B)                                                                         // dec iy
-                {
-                    registerIY--;
-                    registerPC++;
-                } else if (byteInstruction == 0x25)                                                                         // dec iyh
-                {
-                    bool save_flag = flagC;
-                    byte value1 = (byte)(registerIY >> 8);
-                    byte value2 = 1;
-                    val = Calculate(value1, value2, OPERATOR.SUB);
-                    registerIY = (UInt16)((registerIY & 0x00FF) + (val << 8));
-                    flagC = save_flag;
-                    registerPC++;
-                } else if (byteInstruction == 0x2D)                                                                         // dec iyl
-                {
-                    bool save_flag = flagC;
-                    byte value1 = (byte)(registerIY);
-                    byte value2 = 1;
-                    val = Calculate(value1, value2, OPERATOR.SUB);
-                    registerIY = (UInt16)((registerIY & 0xFF00) + val);
-                    flagC = save_flag;
-                    registerPC++;
-                } else if (byteInstruction == 0x35)                                                                         // dec (iy+o)
-                {
-                    bool save_flag = flagC;
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = RAM[address];
-                    byte value2 = 1;
-                    RAM[address] = Calculate(value1, value2, OPERATOR.SUB);
-                    flagC = save_flag;
-                    registerPC++;
-                } else if (byteInstruction == 0xE3)                                                                         // ex (sp),iy
-                {
-                    byte b1, b2;
-                    b1 = (byte)registerIY;
-                    b2 = (byte)(registerIY >> 8);
-                    registerIY = RAM[registerSP];
-                    RAM[registerSP] = b1;
-                    registerIY += (UInt16)(RAM[registerSP + 1] << 8);
-                    RAM[registerSP + 1] = b2;
-                    registerPC++;
-                } else if (byteInstruction == 0x23)                                                                         // inc iy
-                {
-                    registerIY++;
-                    registerPC++;
-                } else if (byteInstruction == 0x24)                                                                         // inc iyh
-                {
-                    bool save_flag = flagC;
-                    byte value1 = (byte)(registerIY >> 8);
-                    byte value2 = 1;
-                    val = Calculate(value1, value2, OPERATOR.ADD);
-                    registerIY = (UInt16)((registerIY & 0x00FF) + (val << 8));
-                    flagC = save_flag;
-                    registerPC++;
-                } else if (byteInstruction == 0x2C)                                                                         // inc iyl
-                {
-                    bool save_flag = flagC;
-                    byte value1 = (byte)(registerIY);
-                    byte value2 = 1;
-                    val = Calculate(value1, value2, OPERATOR.ADD);
-                    registerIY = (UInt16)((registerIY & 0xFF00) + val);
-                    flagC = save_flag;
-                    registerPC++;
-                } else if (byteInstruction == 0x34)                                                                         // inc (iy+o)
-                {
-                    bool save_flag = flagC;
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = RAM[address];
-                    byte value2 = 1;
-                    RAM[address] = Calculate(value1, value2, OPERATOR.ADD);
-                    flagC = save_flag;
-                    registerPC++;
-                } else if (byteInstruction == 0xE9)                                                                         // jp (iy)
-                {
-                    registerPC = registerIY;
-                } else if (byteInstruction == 0x21)                                                                         // ld iy,nn
-                {
-                    byte b1, b2;
-                    registerPC++;
-                    b1 = RAM[registerPC];
-                    registerPC++;
-                    b2 = RAM[registerPC];
-                    registerPC++;
-                    registerIY = (UInt16)(b1 + (0x0100 * b2));
-                } else if (byteInstruction == 0x2A)                                                                         // ld iy,(nn)
-                {
-                    UInt16 address = 0;
-                    registerPC++;
-                    address = RAM[registerPC];
-                    registerPC++;
-                    address += (UInt16)(0x0100 * RAM[registerPC]);
-                    registerPC++;
-                    byte b1, b2;
-                    b1 = RAM[address];
-                    address++;
-                    b2 = RAM[address];
-                    registerIY = (UInt16)(b1 + (0x0100 * b2));
-                } else if (byteInstruction == 0x26)                                                                         // ld iyh,n
-                {
-                    registerPC++;
-                    byte n = RAM[registerPC];
-                    registerIY = (UInt16)((registerIY & 0x00FF) + (n * 0x100));
-                    registerPC++;
-                } else if (byteInstruction == 0x2E)                                                                         // ld iyl,n
-                {
-                    registerPC++;
-                    byte n = RAM[registerPC];
-                    registerIY = (UInt16)((registerIY & 0xFF00) + n);
-                    registerPC++;
-                } else if (byteInstruction == 0x36)                                                                         // ld (iy+o),n
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    registerPC++;
-                    RAM[address] = RAM[registerPC];
-                    registerPC++;
-                } else if ((byteInstruction == 0x70) ||                                                                     // ld (iy+o),r
-                           (byteInstruction == 0x71) ||
-                           (byteInstruction == 0x72) ||
-                           (byteInstruction == 0x73) ||
-                           (byteInstruction == 0x74) ||
-                           (byteInstruction == 0x75) ||
-                           (byteInstruction == 0x77))
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    num = byteInstruction - 0x40;
-                    result = GetRegisterValue((byte)(num & 0x07), ref val);
-                    if (!result) return ("Can't get the register value");
-                    RAM[address] = val;
-                    registerPC++;
-                } else if (byteInstruction == 0x22)                                                                         // ld (nn),iy
-                {
-                    UInt16 address = 0;
-                    registerPC++;
-                    address = RAM[registerPC];
-                    registerPC++;
-                    address += (UInt16)(0x0100 * RAM[registerPC]);
-                    registerPC++;
-                    RAM[address] = (byte)(registerIY);
-                    address++;
-                    RAM[address] = (byte)(registerIY >> 8);
-                } else if ((byteInstruction == 0x46) ||                                                                     // ld r,(iy+o)
-                           (byteInstruction == 0x4E) ||
-                           (byteInstruction == 0x56) ||
-                           (byteInstruction == 0x5E) ||
-                           (byteInstruction == 0x66) ||
-                           (byteInstruction == 0x6E) ||
-                           (byteInstruction == 0x7E))
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    val = RAM[address];
-                    num = byteInstruction - 0x40;
-                    result = SetRegisterValue((byte)((num >> 3) & 0x07), val);
-                    if (!result) return ("Can't set the register value");
-                    registerPC++;
-                } else if (byteInstruction == 0xF9)                                                                         // ld sp,iy
-                {
-                    registerSP = registerIY;
-                    registerPC++;
-                } else if (byteInstruction == 0xB4)                                                                         // or iyh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.OR);
-                    registerPC++;
-                } else if (byteInstruction == 0xB5)                                                                         // or iyl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, OPERATOR.OR);
-                    registerPC++;
-                } else if (byteInstruction == 0xB6)                                                                         // or (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.OR);
-                    registerPC++;
-                } else if (byteInstruction == 0xE1)                                                                         // pop iy
-                {
-                    registerIY = RAM[registerSP];
-                    registerSP++;
-                    registerIY += (UInt16)(0x0100 * RAM[registerSP]);
-                    registerSP++;
-                    registerPC++;
-                } else if (byteInstruction == 0xE5)                                                                         // push iy
-                {
-                    registerSP--;
-                    RAM[registerSP] = (byte)(registerIY >> 8);
-                    registerSP--;
-                    RAM[registerSP] = (byte)(registerIY & 0x00FF);
-                    registerPC++;
-                } else if (byteInstruction == 0x9C)                                                                         // sbc iyh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.SBC);
-                    registerPC++;
-                } else if (byteInstruction == 0x9D)                                                                         // sbc iyl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, OPERATOR.SBC);
-                    registerPC++;
-                } else if (byteInstruction == 0x9E)                                                                         // sbc a,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.SBC);
-                    registerPC++;
-                } else if (byteInstruction == 0x94)                                                                         // sub iyh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0x95)                                                                         // sub iyl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0x96)                                                                         // sub a,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.SUB);
-                    registerPC++;
-                } else if (byteInstruction == 0xAC)                                                                         // xor iyh
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY >> 8);
-                    registerA = Calculate(value1, value2, OPERATOR.XOR);
-                    registerPC++;
-                } else if (byteInstruction == 0xAD)                                                                         // xor iyl
-                {
-                    byte value1 = registerA;
-                    byte value2 = (byte)(registerIY);
-                    registerA = Calculate(value1, value2, OPERATOR.XOR);
-                    registerPC++;
-                } else if (byteInstruction == 0xAE)                                                                         // xor (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    byte value1 = registerA;
-                    byte value2 = RAM[address];
-                    registerA = Calculate(value1, value2, OPERATOR.XOR);
-                    registerPC++;
-                } else if (byteInstruction == 0xCB)                                                                         // to IYBit
-                {
-                    registerPC++;
-                    string message = RunInstructionIYBit();
-                    if (message != "") return (message);
-                } else
-                {
-                    return ("Unknown IY instruction '" + byteInstruction.ToString("X2") + "'");
-                }
-            } catch (Exception exception)
-            {
-                return ("Exception at memory location: " + registerPC.ToString("X") + ":\r\n" + exception.Message);
-            }
-
-            return "";
-        }
-
-        #endregion
-
-        #region Methods (RunInstructionIY-Bit)
-
-        /// <summary>
-        /// Run IY-Bit instruction (at programcounter)
-        /// </summary>
-        /// <returns></returns>
-        public string RunInstructionIYBit()
-        {
-            bool result;
-            byteInstruction = RAM[registerPC];
-
-            try
-            {
-                if (byteInstruction == 0x46)                                                                                // bit 0,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    result = (RAM[address] & 0b00000001) == 0b00000001;
-                    if (result) flagZ = false; else flagZ = true;
-                    flagH = true;
-                    flagN = false;
-                    registerPC++;
-                } else if (byteInstruction == 0x4E)                                                                         // bit 1,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    result = (RAM[address] & 0b00000010) == 0b00000010;
-                    if (result) flagZ = false; else flagZ = true;
-                    flagH = true;
-                    flagN = false;
-                    registerPC++;
-                } else if (byteInstruction == 0x56)                                                                         // bit 2,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    result = (RAM[address] & 0b00000100) == 0b00000100;
-                    if (result) flagZ = false; else flagZ = true;
-                    flagH = true;
-                    flagN = false;
-                    registerPC++;
-                } else if (byteInstruction == 0x5E)                                                                         // bit 3,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    result = (RAM[address] & 0b00001000) == 0b00001000;
-                    if (result) flagZ = false; else flagZ = true;
-                    flagH = true;
-                    flagN = false;
-                    registerPC++;
-                } else if (byteInstruction == 0x66)                                                                         // bit 4,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    result = (RAM[address] & 0b00010000) == 0b00010000;
-                    if (result) flagZ = false; else flagZ = true;
-                    flagH = true;
-                    flagN = false;
-                    registerPC++;
-                } else if (byteInstruction == 0x6E)                                                                         // bit 5,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    result = (RAM[address] & 0b00100000) == 0b00100000;
-                    if (result) flagZ = false; else flagZ = true;
-                    flagH = true;
-                    flagN = false;
-                    registerPC++;
-                } else if (byteInstruction == 0x76)                                                                         // bit 6,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    result = (RAM[address] & 0b01000000) == 0b01000000;
-                    if (result) flagZ = false; else flagZ = true;
-                    flagH = true;
-                    flagN = false;
-                    registerPC++;
-                } else if (byteInstruction == 0x7E)                                                                         // bit 7,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    result = (RAM[address] & 0b10000000) == 0b10000000;
-                    if (result) flagZ = false; else flagZ = true;
-                    flagH = true;
-                    flagN = false;
-                    registerPC++;
-                } else if (byteInstruction == 0x86)                                                                         // res 0,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] & 0b11111110);
-                    registerPC++;
-                } else if (byteInstruction == 0x8E)                                                                         // res 1,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] & 0b11111101);
-                    registerPC++;
-                } else if (byteInstruction == 0x96)                                                                         // res 2,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] & 0b11111011);
-                    registerPC++;
-                } else if (byteInstruction == 0x9E)                                                                         // res 3,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] & 0b11110111);
-                    registerPC++;
-                } else if (byteInstruction == 0xA6)                                                                         // res 4,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] & 0b11101111);
-                    registerPC++;
-                } else if (byteInstruction == 0xAE)                                                                         // res 5,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] & 0b11011111);
-                    registerPC++;
-                } else if (byteInstruction == 0xB6)                                                                         // res 6,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] & 0b10111111);
-                    registerPC++;
-                } else if (byteInstruction == 0xBE)                                                                         // res 7,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] & 0b01111111);
-                    registerPC++;
-                } else if (byteInstruction == 0x16)                                                                         // rl (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = RotateShift(RAM[address], OPERATOR.RL);
-                    registerPC++;
-                } else if (byteInstruction == 0x06)                                                                         // rlc (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = RotateShift(RAM[address], OPERATOR.RLC);
-                    registerPC++;
-                } else if (byteInstruction == 0x1E)                                                                         // rr (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = RotateShift(RAM[address], OPERATOR.RR);
-                    registerPC++;
-                } else if (byteInstruction == 0x0E)                                                                         // rrc (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = RotateShift(RAM[address], OPERATOR.RRC);
-                    registerPC++;
-                } else if (byteInstruction == 0xC6)                                                                         // set 0,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] | 0b00000001);
-                    registerPC++;
-                } else if (byteInstruction == 0xCE)                                                                         // set 1,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] | 0b00000010);
-                    registerPC++;
-                } else if (byteInstruction == 0xD6)                                                                         // set 2,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] | 0b00000100);
-                    registerPC++;
-                } else if (byteInstruction == 0xDE)                                                                         // set 3,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] | 0b00001000);
-                    registerPC++;
-                } else if (byteInstruction == 0xE6)                                                                         // set 4,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] | 0b00010000);
-                    registerPC++;
-                } else if (byteInstruction == 0xEE)                                                                         // set 5,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] | 0b00100000);
-                    registerPC++;
-                } else if (byteInstruction == 0xF6)                                                                         // set 6,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] | 0b01000000);
-                    registerPC++;
-                } else if (byteInstruction == 0xFE)                                                                         // set 7,(iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = (byte)(RAM[address] | 0b10000000);
-                    registerPC++;
-                } else if (byteInstruction == 0x26)                                                                         // sla (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = RotateShift(RAM[address], OPERATOR.SLA);
-                    registerPC++;
-                } else if (byteInstruction == 0x36)                                                                         // sll (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = RotateShift(RAM[address], OPERATOR.SLL);
-                    registerPC++;
-                } else if (byteInstruction == 0x2E)                                                                         // sra (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = RotateShift(RAM[address], OPERATOR.SRA);
-                    registerPC++;
-                } else if (byteInstruction == 0x3E)                                                                         // srl (iy+o)
-                {
-                    registerPC++;
-                    byte offset = RAM[registerPC];
-                    UInt16 address = (UInt16)(registerIY + (offset < 0x80 ? offset : offset - 0x100));
-                    RAM[address] = RotateShift(RAM[address], OPERATOR.SRL);
-                    registerPC++;
-                } else
-                {
-                    return ("Unknown IY-Bit instruction '" + byteInstruction.ToString("X2") + "'");
+                    if (registerIndex == registerIX) return ("Unknown IX-Bit instruction 'DDCB" + byteInstruction.ToString("X2") + "'");
+                    if (registerIndex == registerIY) return ("Unknown IY-Bit instruction 'FDCB" + byteInstruction.ToString("X2") + "'");
                 }
             } catch (Exception exception)
             {

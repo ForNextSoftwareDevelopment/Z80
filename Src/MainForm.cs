@@ -2567,8 +2567,9 @@ namespace Z80
                         formTerminal.Show();
                     }
 
-                    formTerminal.tbTerminal.Text += Convert.ToChar(assemblerZ80.PORT[0x80]);
-                    if (formTerminal.tbTerminal.TextLength > 0)
+                    char ch = Convert.ToChar(assemblerZ80.PORT[0x80]);
+                    formTerminal.tbTerminal.Text += ch;
+                    if (ch == '\n')
                     {
                         formTerminal.tbTerminal.Select(formTerminal.tbTerminal.TextLength, 0);
                         formTerminal.tbTerminal.SelectionStart = formTerminal.tbTerminal.TextLength;
