@@ -3024,57 +3024,78 @@ namespace Z80
                     byte high = (byte)(registerA & 0xF0);
                     bool flagCold = flagC;
                     bool flagHold = flagH;
-                    bool flagNold = flagN;
-                    bool flagCnew = false;
 
-                    if (flagNold == false)
+                    byte diff = 0x00;
+
+                    if ((high <= 0x90) && (low <= 0x09) && flagHold && !flagCold)
                     {
-                        if ((low > 0x09) || flagHold)
-                        {
-                            registerA = Calculate(registerA, 0x06, OPERATOR.ADD);
-                        }
-
-                        if ((high > 0x90) || flagCold)
-                        {
-                            registerA = Calculate(registerA, 0x60, OPERATOR.ADD);
-                            flagCnew = true;
-                        }
-                    } else
-                    {
-                        if ((low > 0x09) || flagHold)
-                        {
-                            registerA = Calculate(registerA, 0xFA, OPERATOR.ADD);
-                        }
-
-                        if ((high > 0x90) || flagCold)
-                        {
-                            registerA = Calculate(registerA, 0xA0, OPERATOR.ADD);
-                            flagCnew = true;
-                        }
+                        diff = 0x06;
                     }
 
+                    if ((high <= 0x80) && (low >= 0x0A) && !flagCold)
+                    {
+                        diff = 0x06;
+                    }
+
+                    if ((high >= 0xA0) && (low <= 0x09) && !flagHold && !flagCold)
+                    {
+                        diff = 0x60;
+                    }
+
+                    if ((low <= 0x09) && !flagHold && flagCold)
+                    {
+                        diff = 0x60;
+                    }
+
+                    if ((low <= 0x09) && flagHold && flagCold)
+                    {
+                        diff = 0x66;
+                    }
+
+                    if ((low >= 0x0A) && flagCold)
+                    {
+                        diff = 0x66;
+                    }
+
+                    if ((high >= 0x90) && (low >= 0x0A) && !flagCold)
+                    {
+                        diff = 0x66;
+                    }
+
+                    if ((high >= 0xA0) && (low <= 0x09) && flagHold && !flagCold)
+                    {
+                        diff = 0x66;
+                    }
+
+                    if (flagN == false)
+                    {
+                        registerA = Calculate(registerA, diff, OPERATOR.ADD);
+                    } else
+                    {
+                        registerA = Calculate(registerA, diff, OPERATOR.SUB);
+                    }
+
+                    // Carry
+                    flagC = false;
+                    if ((high >= 0x90) && (low > 0x09)) flagC = true;
+                    if ((high > 0x90) || flagCold) flagC = true;
+
+                    // Sign
                     flagS = (registerA >= 0x80) ? true : false;
-                    flagC = flagCnew;
 
-                    if (flagNold && !flagHold)
-                    {
-                        flagH = false;
-                    } else
-                    {
-                        if (flagNold && flagHold)
-                        {
-                            if (low < 6) flagH = true;
-                        } else
-                        {
-                            if (low >= 0x0A) flagH = true;
-                        }
-                    }
+                    // Half Carry
+                    if (!flagN && (low <= 0x09)) flagH = false;
+                    if (!flagN && (low > 0x09)) flagH = true;
+                    if (flagN && !flagHold) flagH = false;
+                    if (flagN && flagHold && (low >= 0x06)) flagH = false;
+                    if (flagN && flagHold && (low < 0x06)) flagH = true;
 
-                    string strResultAND = Convert.ToString(Convert.ToInt32(registerA.ToString("X2"), 16), 2).PadLeft(8, '0');
+                    // Parity
+                    string strResult = Convert.ToString(Convert.ToInt32(registerA.ToString("X2"), 16), 2).PadLeft(8, '0');
                     int count = 0;
                     for (int i = 0; i < 8; i++)
                     {
-                        if (strResultAND[i] == '1') count++;
+                        if (strResult[i] == '1') count++;
                     }
 
                     if (count % 2 == 0)
@@ -3085,7 +3106,15 @@ namespace Z80
                         flagPV = false;
                     }
 
-                    flagN = flagNold;
+                    // Zero
+                    if (registerA == 0x00)
+                    {
+                        flagZ = true;
+                    } else
+                    {
+                        flagZ = false;
+                    }
+
                     registerPC++;
                 } else if (byteInstruction == 0x3D)                                                                         // dec a
                 {
