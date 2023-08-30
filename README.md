@@ -4,10 +4,6 @@ Z80 Assembler / DisAssembler / MPF-1 Simulator
 This is an assembler/disassembler for the Z80 microprocessor.
 It can also simulate an Multitech MPF-1 (MicroProfessor) developers board (keyboard/display).
 
-NOW IN BETA VERSION, NEED TO TEST SOME MORE.
-
-BUT FEEL FREE TO TEST IT TOO AND REPORT ANY BUGS/WISHES
-
 Copyright (c) 2023 Dirk Prins
 
 ![Screenshot](ScreenShot1.png)
