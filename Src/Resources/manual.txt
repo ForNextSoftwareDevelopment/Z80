@@ -47,11 +47,45 @@ In the MPF-1 window there are several checkboxes:
 -Enable Sound: When checked if a sound is made by the monitor routine (TONE, TONE1K, TONE2K) this will be audible.
 -Insert Monitor Program on Debug: When the debug button is pressed it will insert the monitor program (after assembly of the user program) at 0x0000 to 0x0800
 
+Output to port 0x80 will act as a debug output to a terminal.
+The program zexdoc.z80 uses this for instance to show the results of the tests.
+
 <Assembler>
 
-The assembler can use all of the instructions of the Z80 processor including the undocumented instructions.
-All instructions are implemented by buttons on the left of the screen for reference and/or inserting the selected instruction into the program.
+The assembler can use all of the instructions of the Z80 processor including some of the undocumented instructions.
+All of the undocumented instructions can be used to run the program but I choose not to include several instructions because they are actually 2 instructions.
+Like rlc (ix+o),b = The contents of the memory location pointed to by IX plus o are rotated left one bit position. The contents of bit 7 are copied to the carry flag and bit 0. The result is then stored in B.
+The instructions are implemented by buttons on the left of the screen for reference and/or inserting the selected instruction into the program.
 Numbers should be denoted in decimal, hexadecimal (0x00, $00 or 00H style) or binary (10101010B style).
+The assembler passes the Zexdoc test, not the Zexall (The undocumented instructions can all be executed but I don't use the undocumented flags).
+
+Macros can be used in simple format:
+
+`definition`
+label:  macro   arg1, arg2, arg3
+        local   lab
+lab:    
+        db      arg1
+        dw      arg2
+        ld      a,arg1
+        ld      hl,arg2
+        ld      (hl),a
+        endm
+
+`usage`
+label   8ah,0100h,0
+
+`will result in`
+lab0000:
+        db      8ah
+        dw      0100h
+        ld      a,8ah
+        ld      hl,0100h
+        ld      (hl),a
+
+A debug statement can be defined like:
+`DEBUG false` or `DEBUG true`
+All code with a start statement in between `#debug` and `#enddebug` will be affected by this (included or excluded)
 
 The following directives can be used (example on next row(s)):
 
@@ -70,8 +104,8 @@ DSPLY EQU 1800H
 NUMC EQU $ - CMDTB ; NUMBER OF COMMANDS 
 
 `[LABEL] DB value` Reserving a (number of) byte(s) (with or without label), strings in double quotes will be terminated by a zero
-STRING DB "MPF-1"
-CHARARRAY DB 'MPF-1'
+STRING DB "Terminal"
+CHARARRAY DB 'Terminal'
 AT DB '@', 00H
 DB 00H, 01H, 02H
 DB 'A', 'B', 'C'
