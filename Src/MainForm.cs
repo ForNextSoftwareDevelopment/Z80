@@ -1409,7 +1409,7 @@ namespace Z80
                 {
                     int position = textBox.GetLineFromCharIndex(textBox.SelectionStart);
                     string line = textBox.Lines[position];
-                    textBox.Select(textBox.GetFirstCharIndexFromLine(position), textBox.Text.IndexOf(Environment.NewLine, position));
+                    textBox.Select(textBox.GetFirstCharIndexFromLine(position), line.Length);
                     string[] parts = line.Split(' ');
                     bool result = Int32.TryParse(parts[parts.Length - 1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int address);
                     if (result) tbMemoryStartAddress.Text = address.ToString("X4");
