@@ -310,6 +310,9 @@ namespace Z80
                     UpdateFlags();
                     UpdateInterrupts();
 
+                    resetSimulatorToolStripMenuItem.Enabled = true;
+                    toolStripButtonReset.Enabled = true;
+                    toolStripButtonNew.Enabled = true;
                     toolStripButtonRun.Enabled = false;
                     toolStripButtonFast.Enabled = false;
                     toolStripButtonStep.Enabled = false;
@@ -321,6 +324,9 @@ namespace Z80
             {
                 timer.Enabled = false;
 
+                resetSimulatorToolStripMenuItem.Enabled = true;
+                toolStripButtonReset.Enabled = true;
+                toolStripButtonNew.Enabled = true;
                 toolStripButtonRun.Enabled = false;
                 toolStripButtonFast.Enabled = false;
                 toolStripButtonStep.Enabled = false;
@@ -712,15 +718,15 @@ namespace Z80
                 int end = -1;
 
                 // Find start address of code
-                for (int i = 0; i < assemblerZ80.RAM.Length; i++)
+                for (int i = 0; (i < assemblerZ80.RAM.Length) && (start == -1); i++)
                 {
-                    if ((assemblerZ80.RAM[i] != 0) && (start == -1)) start = i;
+                    if (assemblerZ80.RAMprogramLine[i] != -1) start = i;
                 }
 
                 // Find end address of code
-                for (int i = assemblerZ80.RAM.Length - 1; i >= 0; i--)
+                for (int i = assemblerZ80.RAM.Length - 1; (i >= 0) && (end == -1); i--)
                 {
-                    if ((assemblerZ80.RAM[i] != 0) && (end == -1)) end = i;
+                    if (assemblerZ80.RAMprogramLine[i] != -1) end = i;
                 }
 
                 if ((start == -1) || (end == -1))
@@ -1055,6 +1061,9 @@ namespace Z80
 
         private void startRun_Click(object sender, EventArgs e)
         {
+            resetSimulatorToolStripMenuItem.Enabled = false;
+            toolStripButtonReset.Enabled = false;
+            toolStripButtonNew.Enabled = false;
             toolStripButtonRun.Enabled = false;
             toolStripButtonFast.Enabled = false;
             toolStripButtonStep.Enabled = false;
@@ -1130,6 +1139,9 @@ namespace Z80
         /// <param name="e"></param>
         private void startFast_Click(object sender, EventArgs e)
         {
+            resetSimulatorToolStripMenuItem.Enabled = false;
+            toolStripButtonNew.Enabled = false;
+            toolStripButtonReset.Enabled = false;
             toolStripButtonRun.Enabled = false;
             toolStripButtonFast.Enabled = false;
             toolStripButtonStep.Enabled = false;
@@ -1151,13 +1163,15 @@ namespace Z80
                     UpdateTerminal();
                     if ((assemblerZ80.RAMprogramLine[nextInstrAddress] == lineBreakPoint) && (lineBreakPoint != -1)) 
                     {
+                        resetSimulatorToolStripMenuItem.Enabled = true;
+                        toolStripButtonReset.Enabled = true;
+                        toolStripButtonNew.Enabled = true;
                         toolStripButtonRun.Enabled = true;
                         toolStripButtonFast.Enabled = true;
                         toolStripButtonStep.Enabled = true;
                         toolStripButtonStop.Enabled = false;
-                    }
+                    } 
 
-                    toolStripButtonStop.Enabled = true;
                     Application.DoEvents();
                 }
             }
@@ -1187,6 +1201,9 @@ namespace Z80
                 toolStripButtonStop.Enabled = false;
             } else if (error == "System Halted")
             {
+                resetSimulatorToolStripMenuItem.Enabled = true;
+                toolStripButtonReset.Enabled = true;
+                toolStripButtonNew.Enabled = true;
                 toolStripButtonRun.Enabled = false;
                 toolStripButtonFast.Enabled = false;
                 toolStripButtonStep.Enabled = false;
@@ -1196,6 +1213,9 @@ namespace Z80
                 MessageBox.Show(error, "SYSTEM HALTED", MessageBoxButtons.OK, MessageBoxIcon.Information);
             } else
             {
+                resetSimulatorToolStripMenuItem.Enabled = true;
+                toolStripButtonReset.Enabled = true;
+                toolStripButtonNew.Enabled = true;
                 toolStripButtonRun.Enabled = false;
                 toolStripButtonFast.Enabled = false;
                 toolStripButtonStep.Enabled = false;
@@ -1227,6 +1247,9 @@ namespace Z80
 
                 ChangeColorRTBLine(assemblerZ80.RAMprogramLine[nextInstrAddress], false);
 
+                resetSimulatorToolStripMenuItem.Enabled = true;
+                toolStripButtonReset.Enabled = true;
+                toolStripButtonNew.Enabled = true;
                 toolStripButtonRun.Enabled = true;
                 toolStripButtonFast.Enabled = true;
                 toolStripButtonStep.Enabled = true;
@@ -2632,10 +2655,12 @@ namespace Z80
                 richTextBoxProgram.SelectionStart = firstcharindex;
                 richTextBoxProgram.SelectionLength = 0;
 
-                // Scroll to line (show 1 line before selected line if available)
+                // Scroll to line (show lines (focus_line)  before selected line if available)
                 if (line_number != 0)
                 {
-                    firstcharindex = richTextBoxProgram.GetFirstCharIndexFromLine(line_number - 1);
+                    int focus_line = line_number - Convert.ToInt32(numFocusLine.Value) + 1;
+                    if (focus_line < 1) focus_line = 1;
+                    firstcharindex = richTextBoxProgram.GetFirstCharIndexFromLine(focus_line);
                     richTextBoxProgram.SelectionStart = firstcharindex;
                 }
 

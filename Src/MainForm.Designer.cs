@@ -120,7 +120,7 @@ namespace Z80
             this.toolStripButtonSave = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonSaveAs = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-            this.toolStripButtonRestartSimulator = new System.Windows.Forms.ToolStripButton();
+            this.toolStripButtonReset = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripButtonStartDebug = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonRun = new System.Windows.Forms.ToolStripButton();
@@ -174,6 +174,8 @@ namespace Z80
             this.lblFlagZalt = new System.Windows.Forms.Label();
             this.lblFlagSalt = new System.Windows.Forms.Label();
             this.chkSkipLoops = new System.Windows.Forms.CheckBox();
+            this.lblFocusLine = new System.Windows.Forms.Label();
+            this.numFocusLine = new System.Windows.Forms.NumericUpDown();
             this.menuStrip.SuspendLayout();
             this.groupBoxFlags.SuspendLayout();
             this.groupBoxRegisters.SuspendLayout();
@@ -189,6 +191,7 @@ namespace Z80
             this.panelInterrupt.SuspendLayout();
             this.tcInstructions.SuspendLayout();
             this.groupBoxAltFlags.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numFocusLine)).BeginInit();
             this.SuspendLayout();
             // 
             // menuStrip
@@ -1075,7 +1078,7 @@ namespace Z80
             this.toolStripButtonSave,
             this.toolStripButtonSaveAs,
             this.toolStripSeparator1,
-            this.toolStripButtonRestartSimulator,
+            this.toolStripButtonReset,
             this.toolStripSeparator2,
             this.toolStripButtonStartDebug,
             this.toolStripButtonRun,
@@ -1133,15 +1136,15 @@ namespace Z80
             this.toolStripSeparator1.Name = "toolStripSeparator1";
             this.toolStripSeparator1.Size = new System.Drawing.Size(6, 25);
             // 
-            // toolStripButtonRestartSimulator
+            // toolStripButtonReset
             // 
-            this.toolStripButtonRestartSimulator.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.toolStripButtonRestartSimulator.Image = global::Z80.Properties.Resources.reset;
-            this.toolStripButtonRestartSimulator.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolStripButtonRestartSimulator.Name = "toolStripButtonRestartSimulator";
-            this.toolStripButtonRestartSimulator.Size = new System.Drawing.Size(23, 22);
-            this.toolStripButtonRestartSimulator.Text = "Reset Simulator";
-            this.toolStripButtonRestartSimulator.Click += new System.EventHandler(this.resetSimulator_Click);
+            this.toolStripButtonReset.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonReset.Image = global::Z80.Properties.Resources.reset;
+            this.toolStripButtonReset.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButtonReset.Name = "toolStripButtonReset";
+            this.toolStripButtonReset.Size = new System.Drawing.Size(23, 22);
+            this.toolStripButtonReset.Text = "Reset Simulator";
+            this.toolStripButtonReset.Click += new System.EventHandler(this.resetSimulator_Click);
             // 
             // toolStripSeparator2
             // 
@@ -1433,13 +1436,13 @@ namespace Z80
             this.lblSetProgramCounter.AutoSize = true;
             this.lblSetProgramCounter.Location = new System.Drawing.Point(497, 17);
             this.lblSetProgramCounter.Name = "lblSetProgramCounter";
-            this.lblSetProgramCounter.Size = new System.Drawing.Size(105, 13);
+            this.lblSetProgramCounter.Size = new System.Drawing.Size(40, 13);
             this.lblSetProgramCounter.TabIndex = 31;
-            this.lblSetProgramCounter.Text = "Set Program Counter";
+            this.lblSetProgramCounter.Text = "Set PC";
             // 
             // tbSetProgramCounter
             // 
-            this.tbSetProgramCounter.Location = new System.Drawing.Point(608, 13);
+            this.tbSetProgramCounter.Location = new System.Drawing.Point(543, 13);
             this.tbSetProgramCounter.MaxLength = 4;
             this.tbSetProgramCounter.Name = "tbSetProgramCounter";
             this.tbSetProgramCounter.Size = new System.Drawing.Size(41, 20);
@@ -1723,19 +1726,48 @@ namespace Z80
             this.chkSkipLoops.AutoSize = true;
             this.chkSkipLoops.Checked = true;
             this.chkSkipLoops.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkSkipLoops.Location = new System.Drawing.Point(669, 16);
+            this.chkSkipLoops.Location = new System.Drawing.Point(711, 16);
             this.chkSkipLoops.Name = "chkSkipLoops";
-            this.chkSkipLoops.Size = new System.Drawing.Size(151, 17);
+            this.chkSkipLoops.Size = new System.Drawing.Size(109, 17);
             this.chkSkipLoops.TabIndex = 38;
-            this.chkSkipLoops.Text = "Skip Program Delay Loops";
+            this.chkSkipLoops.Text = "Skip Delay Loops";
             this.chkSkipLoops.UseVisualStyleBackColor = true;
             this.chkSkipLoops.CheckedChanged += new System.EventHandler(this.chkSkipLoops_CheckedChanged);
+            // 
+            // lblFocusLine
+            // 
+            this.lblFocusLine.AutoSize = true;
+            this.lblFocusLine.Location = new System.Drawing.Point(590, 17);
+            this.lblFocusLine.Name = "lblFocusLine";
+            this.lblFocusLine.Size = new System.Drawing.Size(56, 13);
+            this.lblFocusLine.TabIndex = 51;
+            this.lblFocusLine.Text = "FocusLine";
+            // 
+            // numFocusLine
+            // 
+            this.numFocusLine.Location = new System.Drawing.Point(652, 14);
+            this.numFocusLine.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.numFocusLine.Name = "numFocusLine";
+            this.numFocusLine.Size = new System.Drawing.Size(52, 20);
+            this.numFocusLine.TabIndex = 50;
+            this.numFocusLine.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.numFocusLine.Value = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1384, 981);
+            this.Controls.Add(this.lblFocusLine);
+            this.Controls.Add(this.numFocusLine);
             this.Controls.Add(this.chkSkipLoops);
             this.Controls.Add(this.groupBoxAltFlags);
             this.Controls.Add(this.tcInstructions);
@@ -1788,6 +1820,7 @@ namespace Z80
             this.tcInstructions.ResumeLayout(false);
             this.groupBoxAltFlags.ResumeLayout(false);
             this.groupBoxAltFlags.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numFocusLine)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -1852,7 +1885,7 @@ namespace Z80
         private System.Windows.Forms.ToolStripButton toolStripButtonSave;
         private System.Windows.Forms.ToolStripButton toolStripButtonSaveAs;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
-        private System.Windows.Forms.ToolStripButton toolStripButtonRestartSimulator;
+        private System.Windows.Forms.ToolStripButton toolStripButtonReset;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.ToolStripButton toolStripButtonStartDebug;
         private System.Windows.Forms.ToolStripButton toolStripButtonStep;
@@ -1937,6 +1970,8 @@ namespace Z80
         private System.Windows.Forms.Label lblIM;
         private System.Windows.Forms.CheckBox chkSkipLoops;
         private System.Windows.Forms.ToolStripButton toolStripButtonFast;
+        private System.Windows.Forms.Label lblFocusLine;
+        private System.Windows.Forms.NumericUpDown numFocusLine;
     }
 }
 

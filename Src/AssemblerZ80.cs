@@ -872,6 +872,9 @@ namespace Z80
             // Replace all symbols from symbol table
             foreach (string str in args)
             {
+                // Replace $ with location counter -1 (position of opcode)
+                if (str.Trim() == "$") arg = arg.Replace("$", (locationCounter - 1).ToString());
+
                 foreach (KeyValuePair<string, int> keyValuePair in addressSymbolTable)
                 {
                     if (str.Trim() == keyValuePair.Key.Trim())
@@ -943,11 +946,11 @@ namespace Z80
             // Replace all symbols from symbol table
             foreach (string str in args)
             {
+                // Replace $ with location counter -1 (position of opcode)
+                if (str.Trim() == "$") arg = arg.Replace("$", (locationCounter - 1).ToString());
+
                 foreach (KeyValuePair<string, int> keyValuePair in addressSymbolTable)
                 {
-                    // Replace $ with location counter -1 (position of opcode)
-                    if (str.Trim() == "$") arg = arg.Replace("$", (locationCounter - 1).ToString());
-
                     if (str.Trim() == keyValuePair.Key.Trim())
                     {
                         arg = arg.Replace(str, keyValuePair.Value.ToString());
@@ -1233,7 +1236,7 @@ namespace Z80
                         for (int indexOperands = 0; indexOperands < operands.Length; indexOperands++)
                         {
                             string arg = argumentsZ80Instruction[indexOperands];
-                            string opr = operands[indexOperands].ToLower().Trim();
+                            string opr = operands[indexOperands].Trim();
 
                             // Check if operand is indexed and the instruction is not indexed (not with cp)
                             if ((opcode != "cp") && opr.StartsWith("(") && !arg.StartsWith("("))
@@ -1288,6 +1291,9 @@ namespace Z80
 
                                 if ((result1 != "OK") || (result2 != "OK")) matchOperands = false;
                             }
+
+                            // Operand to lowercase for easy checking next items
+                            opr = opr.ToLower();
 
                             // Check if the instruction operand is a number (immediate, extended or indexed)
                             if (
@@ -1741,7 +1747,7 @@ namespace Z80
                 try
                 {
                     // Check for opcode (directive) db, replace chars/strings with hex values
-                    if (line.ToLower().StartsWith("db") || line.ToLower().StartsWith(".db") || line.ToLower().StartsWith("defb") || line.ToLower().StartsWith(".text"))
+                    if (line.ToLower().StartsWith("db") || line.ToLower().StartsWith(".db") || line.ToLower().StartsWith("defb") || line.ToLower().StartsWith("defm") || line.ToLower().StartsWith(".text"))
                     {
                         string lineDB = line;
 
@@ -1967,7 +1973,7 @@ namespace Z80
                 // Count the operand(s) for db, dw, ds
                 try
                 {
-                    if (opcode.Equals("db") || opcode.Equals("defb"))
+                    if (opcode.Equals("db") || opcode.Equals("defb") || opcode.Equals("defm"))
                     {
                         if (operands.Length == 0)
                         {
@@ -2285,7 +2291,8 @@ namespace Z80
                             return ("OK");
 
                         case "db":                                                                                      // db
-                        case "defb":                                                                                      
+                        case "defb":
+                        case "defm":
 
                             for (k = 0; k < operands.Length; k++)
                             {
@@ -2560,7 +2567,23 @@ namespace Z80
                                                 calcShort = Get2Bytes(operands[i], out string oResult);
                                                 if (oResult == "OK")
                                                 {
-                                                    int offset = calcShort - locationCounter - 1;
+                                                    // Check if operand is a label or direct value
+                                                    bool direct = true;
+                                                    if (operands[i].Contains("$")) direct = false;
+                                                    foreach (KeyValuePair<string, int> keyValuePair in addressSymbolTable)
+                                                    {
+                                                        if (operands[i].ToLower().Trim() == keyValuePair.Key.ToLower().Trim()) direct = false;
+                                                    }
+
+                                                    int offset;
+                                                    if (direct)
+                                                    {
+                                                        offset = calcShort < 0x80 ? calcShort : calcShort - 256;
+                                                    } else
+                                                    {
+                                                        offset = calcShort - locationCounter - 1;
+                                                    }
+
                                                     if (offset > 127) return ("Offset to large for " + opcode + ":\r\nOffset = " + offset + " (max 127)\r\nAt line " + (lineNumber + 1));
                                                     if (offset < -128) return ("Offset to small for " + opcode + ":\r\nOffset = " + offset + " (min -128)\r\nAt line " + (lineNumber + 1));
                                                     RAMprogramLine[locationCounter] = lineNumber;
