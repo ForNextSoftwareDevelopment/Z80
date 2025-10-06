@@ -1747,7 +1747,7 @@ namespace Z80
                 try
                 {
                     // Check for opcode (directive) db, replace chars/strings with hex values
-                    if (line.ToLower().StartsWith("db") || line.ToLower().StartsWith(".db") || line.ToLower().StartsWith("defb") || line.ToLower().StartsWith("defm") || line.ToLower().StartsWith(".text"))
+                    if (line.ToLower().StartsWith("db") || line.ToLower().StartsWith(".db") || line.ToLower().StartsWith("defb") || line.ToLower().StartsWith("defm") || line.ToLower().StartsWith(".text") || line.ToLower().StartsWith(".byte"))
                     {
                         string lineDB = line;
 
@@ -1970,10 +1970,10 @@ namespace Z80
                     return("EXCEPTION ERROR AT LINE " + (lineNumber + 1));
                 }
 
-                // Count the operand(s) for db, dw, ds
+                // Count the operand(s) for db, dw
                 try
                 {
-                    if (opcode.Equals("db") || opcode.Equals("defb") || opcode.Equals("defm"))
+                    if (opcode.Equals("db") || opcode.Equals("defb") || opcode.Equals("defm") || opcode.Equals("byte"))
                     {
                         if (operands.Length == 0)
                         {
@@ -1997,7 +1997,7 @@ namespace Z80
                         continue;
                     }
 
-                    if (opcode.Equals("dw") || opcode.Equals("defw"))
+                    if (opcode.Equals("dw") || opcode.Equals("defw") || opcode.Equals("word"))
                     {
                         if (operands.Length == 0)
                         {
@@ -2293,6 +2293,7 @@ namespace Z80
                         case "db":                                                                                      // db
                         case "defb":
                         case "defm":
+                        case "byte":
 
                             for (k = 0; k < operands.Length; k++)
                             {
@@ -2316,6 +2317,7 @@ namespace Z80
 
                         case "dw":                                                                                      // dw
                         case "defw":
+                        case "word":
 
                             for (k = 0; k < operands.Length; k++)
                             {
@@ -4640,7 +4642,7 @@ namespace Z80
                 } else
                 {
                     if (registerIndex == registerIX) return ("Unknown IX instruction 'DD" + byteInstruction.ToString("X2") + "'");
-                    if (registerIndex == registerIY) return ("Unknown IX instruction 'FD" + byteInstruction.ToString("X2") + "'");
+                    if (registerIndex == registerIY) return ("Unknown IY instruction 'FD" + byteInstruction.ToString("X2") + "'");
                 }
             } catch (Exception exception)
             {
@@ -5189,7 +5191,7 @@ namespace Z80
                     result = GetRegisterValue((byte)((num >> 3) & 0x07), ref val);
                     if (!result) return ("Can't get the register value");
                     PORT[registerC] = val;
-                    if (registerPC == 0x80) outTerminal = true;
+                    if (registerC == 0x80) outTerminal = true;
                 } else if (byteInstruction == 0x42)                                                                         // sbc hl,bc
                 {
                     UInt16 value1 = (UInt16)(0x0100 * registerH + registerL);
@@ -5570,7 +5572,7 @@ namespace Z80
                     flagN = true;
                     registerB--;
                     if (registerB == 0) flagZ = true; else flagZ = false;
-                    if (registerPC == 0x80) outTerminal = true;
+                    if (registerC == 0x80) outTerminal = true;
                     registerPC++;
                 } else if (byteInstruction == 0xB3)                                                                         // otir
                 {
@@ -5753,7 +5755,7 @@ namespace Z80
                     flagN = true;
                     registerB--;
                     if (registerB == 0) flagZ = true; else flagZ = false;
-                    if (registerPC == 0x80) outTerminal = true;
+                    if (registerC == 0x80) outTerminal = true;
                     registerPC++;
                 } else if (byteInstruction == 0xBB)                                                                         // otdr
                 {

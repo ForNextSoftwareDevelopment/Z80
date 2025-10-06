@@ -252,7 +252,7 @@ namespace Z80
             if (!chkLock.Checked)
             {
                 if (nextInstrAddress > startViewAddress + 0x100) startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
-                if (nextInstrAddress < startViewAddress) startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
+                if (nextInstrAddress < startViewAddress)         startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
             }
 
             UpdateMemoryPanel(startViewAddress, nextInstrAddress);
@@ -1086,7 +1086,7 @@ namespace Z80
             if (!chkLock.Checked)
             {
                 if (nextInstrAddress > startViewAddress + 0x100) startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
-                if (nextInstrAddress < startViewAddress - 0x100) startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
+                if (nextInstrAddress < startViewAddress)         startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
             }
 
             UpdateMemoryPanel(startViewAddress, nextInstrAddress);
@@ -1180,7 +1180,7 @@ namespace Z80
             if (!chkLock.Checked)
             {
                 if (nextInstrAddress > startViewAddress + 0x100) startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
-                if (nextInstrAddress < startViewAddress - 0x100) startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
+                if (nextInstrAddress < startViewAddress)         startViewAddress = (UInt16)(nextInstrAddress & 0xFFF0);
             }
 
             UpdateMemoryPanel(startViewAddress, nextInstrAddress);
@@ -2487,9 +2487,9 @@ namespace Z80
                 {
                     System.Threading.Thread.Sleep(100);
                     assemblerZ80.registerSP--;
-                    assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)(assemblerZ80.registerPC & 0x00FF);
-                    assemblerZ80.registerSP--;
                     assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)((assemblerZ80.registerPC & 0xFF00) >> 8);
+                    assemblerZ80.registerSP--;
+                    assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)(assemblerZ80.registerPC & 0x00FF);
 
                     nextInstrAddress = 0x0066;
 
@@ -2506,9 +2506,9 @@ namespace Z80
                         if (assemblerZ80.im == IM.im0)
                         {
                             assemblerZ80.registerSP--;
-                            assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)(assemblerZ80.registerPC & 0x00FF);
-                            assemblerZ80.registerSP--;
                             assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)((assemblerZ80.registerPC & 0xFF00) >> 8);
+                            assemblerZ80.registerSP--;
+                            assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)(assemblerZ80.registerPC & 0x00FF);
 
                             UInt16 address = (UInt16)(0x0100 * assemblerZ80.RAM[0x1FEF] + assemblerZ80.RAM[0x1FEE]);
                             nextInstrAddress = address;
@@ -2518,9 +2518,9 @@ namespace Z80
                         if (assemblerZ80.im == IM.im1)
                         {
                             assemblerZ80.registerSP--;
-                            assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)(assemblerZ80.registerPC & 0x00FF);
-                            assemblerZ80.registerSP--;
                             assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)((assemblerZ80.registerPC & 0xFF00) >> 8);
+                            assemblerZ80.registerSP--;
+                            assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)(assemblerZ80.registerPC & 0x00FF);
 
                             nextInstrAddress = 0x0038;
                         }
@@ -2529,9 +2529,9 @@ namespace Z80
                         if (assemblerZ80.im == IM.im2)
                         {
                             assemblerZ80.registerSP--;
-                            assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)(assemblerZ80.registerPC & 0x00FF);
-                            assemblerZ80.registerSP--;
                             assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)((assemblerZ80.registerPC & 0xFF00) >> 8);
+                            assemblerZ80.registerSP--;
+                            assemblerZ80.RAM[assemblerZ80.registerSP] = (byte)(assemblerZ80.registerPC & 0x00FF);
 
                             UInt16 address = (UInt16)(0x0100 * assemblerZ80.registerI + 0x00FF);
                             nextInstrAddress = address;
